@@ -1,0 +1,25 @@
+# Copy this file to terraform.tfvars and update the values before deployment.
+project_name        = "observability"
+environment         = "demo"
+location            = "uaenorth"
+admin_username      = "azureadmin"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+
+# Replace this documentation address with your real public IPv4 address /32.
+# Find it with: curl -4 https://ifconfig.me
+admin_source_cidr = "203.0.113.10/32"
+
+vm_size            = "Standard_B2s"
+os_disk_size_gb     = 64
+expose_prometheus   = false
+
+auto_shutdown_enabled  = true
+auto_shutdown_time     = "2300"
+auto_shutdown_timezone = "Arab Standard Time"
+
+tags = {
+  owner       = "cloud-project"
+  managed-by  = "terraform"
+  application = "monitoring"
+  cost-center = "training"
+}

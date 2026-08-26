@@ -1,0 +1,105 @@
+groups:
+  - name: platform-availability
+    rules:
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: operations
+        annotations:
+          summary: "Prometheus target is unavailable"
+          description: "Target {{ $labels.instance }} in job {{ $labels.job }} has been down for more than two minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#target-down"
+
+      - alert: MonitoredEndpointDown
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: operations
+        annotations:
+          summary: "Monitored HTTP endpoint is unavailable"
+          description: "Blackbox checks for {{ $labels.instance }} have failed for more than two minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#endpoint-down"
+
+  - name: platform-capacity
+    rules:
+      - alert: HostHighCPU
+        expr: instance:node_cpu_utilisation:ratio > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "Sustained host CPU pressure"
+          description: "CPU utilization on {{ $labels.instance }} has exceeded 85% for ten minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#high-cpu"
+
+      - alert: HostHighMemory
+        expr: instance:node_memory_utilisation:ratio > 0.90
+        for: 10m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "Sustained host memory pressure"
+          description: "Memory utilization on {{ $labels.instance }} has exceeded 90% for ten minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#high-memory"
+
+      - alert: HostFilesystemLowSpace
+        expr: instance:node_filesystem_utilisation:ratio{mountpoint="/"} > 0.85
+        for: 15m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "Host root filesystem is running low on free space"
+          description: "Root filesystem utilization on {{ $labels.instance }} has exceeded 85% for fifteen minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#low-disk-space"
+
+      - alert: ContainerHighCPU
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "Container CPU usage is high"
+          description: "Container {{ $labels.name }} has consumed more than 0.8 CPU cores for ten minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#container-pressure"
+
+  - name: business-service
+    rules:
+      - alert: DemoApplicationHighErrorRate
+        expr: demo:http_error_ratio:rate5m > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: application
+        annotations:
+          summary: "Application error ratio exceeds 5%"
+          description: "The demonstration application's five-minute HTTP error ratio is {{ $value | humanizePercentage }}."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#application-errors"
+
+      - alert: DemoInventoryLow
+        expr: demo_inventory_level < 20
+        for: 2m
+        labels:
+          severity: warning
+          team: business-operations
+        annotations:
+          summary: "Demonstration inventory is low"
+          description: "The simulated inventory level has fallen below 20 units. Current level: {{ $value }}."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#low-inventory"
+
+      - alert: DemoNoRecentOrders
+        expr: increase(demo_orders_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: info
+          team: business-operations
+        annotations:
+          summary: "No demonstration orders in the last thirty minutes"
+          description: "The order counter has not increased. This is expected until traffic is generated during the demonstration."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#no-orders"

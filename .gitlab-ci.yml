@@ -1,0 +1,54 @@
+stages:
+  - validate
+  - test
+
+variables:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  AST_ENABLE_MR_PIPELINES: "true"
+
+include:
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+
+terraform_validate:
+  stage: validate
+  image:
+    name: hashicorp/terraform:1.15.8
+    entrypoint: [""]
+  cache:
+    key: terraform-provider-cache
+    paths:
+      - .terraform.d/plugin-cache/
+  before_script:
+    - mkdir -p "$CI_PROJECT_DIR/.terraform.d/plugin-cache"
+    - export TF_PLUGIN_CACHE_DIR="$CI_PROJECT_DIR/.terraform.d/plugin-cache"
+  script:
+    - terraform -chdir=terraform fmt -check -recursive
+    - terraform -chdir=terraform init -backend=false
+    - terraform -chdir=terraform validate
+
+shellcheck:
+  stage: validate
+  image:
+    name: koalaman/shellcheck-alpine:v0.11.0
+    entrypoint: [""]
+  script:
+    - shellcheck scripts/*.sh stack/scripts/*.sh
+
+python_and_dashboard:
+  stage: validate
+  image: python:3.13-alpine
+  script:
+    - python -m py_compile stack/demo-app/app.py
+    - python -m json.tool stack/grafana/dashboards/operations-overview.json > /dev/null
+
+compose_validate:
+  stage: validate
+  image:
+    name: docker:29.7.2-cli
+    entrypoint: [""]
+  before_script:
+    - mkdir -p stack/secrets
+    - printf 'gitlab-ci-placeholder\n' > stack/secrets/grafana_admin_password.txt
+  script:
+    - docker compose --env-file stack/.env.example -f stack/compose.yaml config --quiet

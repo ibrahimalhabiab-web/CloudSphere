@@ -1,0 +1,110 @@
+variable "project_name" {
+  description = "Short lowercase name used in Azure resource names."
+  type        = string
+  default     = "observability"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{2,18}$", var.project_name))
+    error_message = "project_name must be 3-19 lowercase letters, digits, or hyphens and start with a letter."
+  }
+}
+
+variable "environment" {
+  description = "Deployment environment label."
+  type        = string
+  default     = "demo"
+
+  validation {
+    condition     = contains(["demo", "dev", "test", "prod"], var.environment)
+    error_message = "environment must be one of: demo, dev, test, prod."
+  }
+}
+
+variable "location" {
+  description = "Azure region for all resources."
+  type        = string
+  default     = "uaenorth"
+}
+
+variable "admin_username" {
+  description = "Linux administrator account created on the virtual machine."
+  type        = string
+  default     = "azureadmin"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9_-]{2,30}$", var.admin_username))
+    error_message = "admin_username must be a valid lowercase Linux account name."
+  }
+}
+
+variable "ssh_public_key_path" {
+  description = "Path to the administrator SSH public key."
+  type        = string
+  default     = "~/.ssh/id_ed25519.pub"
+}
+
+variable "admin_source_cidr" {
+  description = "Trusted public IPv4 CIDR allowed to reach SSH and Grafana, normally YOUR_PUBLIC_IP/32."
+  type        = string
+
+  validation {
+    condition     = can(cidrnetmask(var.admin_source_cidr)) && var.admin_source_cidr != "0.0.0.0/0"
+    error_message = "Provide a valid restricted IPv4 CIDR. The open range 0.0.0.0/0 is intentionally rejected."
+  }
+}
+
+variable "vm_size" {
+  description = "Azure VM size. Standard_B2s is suitable for a small demonstration environment."
+  type        = string
+  default     = "Standard_B2s"
+}
+
+variable "os_disk_size_gb" {
+  description = "Operating-system disk size in GiB."
+  type        = number
+  default     = 64
+
+  validation {
+    condition     = var.os_disk_size_gb >= 32
+    error_message = "os_disk_size_gb must be at least 32 GiB."
+  }
+}
+
+variable "expose_prometheus" {
+  description = "Create a public NSG rule for Prometheus. Keep false and use an SSH tunnel unless there is a specific need."
+  type        = bool
+  default     = false
+}
+
+variable "auto_shutdown_enabled" {
+  description = "Enable a daily VM shutdown schedule to control demonstration cost."
+  type        = bool
+  default     = true
+}
+
+variable "auto_shutdown_time" {
+  description = "Daily auto-shutdown time in 24-hour HHmm format."
+  type        = string
+  default     = "2300"
+
+  validation {
+    condition     = can(regex("^(?:[01][0-9]|2[0-3])[0-5][0-9]$", var.auto_shutdown_time))
+    error_message = "auto_shutdown_time must use HHmm, for example 2300."
+  }
+}
+
+variable "auto_shutdown_timezone" {
+  description = "Azure DevTest schedule time-zone name."
+  type        = string
+  default     = "Arab Standard Time"
+}
+
+variable "tags" {
+  description = "Additional tags applied to Azure resources."
+  type        = map(string)
+  default = {
+    owner       = "cloud-project"
+    managed-by  = "terraform"
+    application = "monitoring"
+  }
+}

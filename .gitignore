@@ -1,0 +1,33 @@
+# Terraform working data and state
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Runtime environment and secrets
+.env
+stack/secrets/*
+!stack/secrets/README.md
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Generated operations data
+backups/
+*.log
+__pycache__/
+*.pyc
+
+# Editor and operating-system noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
