@@ -16,3 +16,12 @@ groups:
 
       - record: demo:orders:rate5m
         expr: rate(demo_orders_total[5m])
+
+      - record: platform:gitlab_target_availability:ratio
+        expr: avg(up{job="gitlab"})
+
+      - record: platform:gitlab_endpoint_availability:ratio
+        expr: avg(probe_success{job="gitlab-health"})
+
+      - record: platform:gitlab_host_availability:ratio
+        expr: avg(up{job="gitlab-node"})

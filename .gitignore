@@ -15,6 +15,9 @@ override.tf.json
 .env
 stack/secrets/*
 !stack/secrets/README.md
+gitlab/secrets/*
+!gitlab/secrets/README.md
+gitlab/backups/
 *.pem
 *.key
 id_rsa

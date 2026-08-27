@@ -1,6 +1,7 @@
 stages:
   - validate
   - test
+  - deploy
 
 variables:
   TF_IN_AUTOMATION: "true"
@@ -33,14 +34,15 @@ shellcheck:
     name: koalaman/shellcheck-alpine:v0.11.0
     entrypoint: [""]
   script:
-    - shellcheck scripts/*.sh stack/scripts/*.sh
+    - shellcheck scripts/*.sh stack/scripts/*.sh gitlab/scripts/*.sh
 
-python_and_dashboard:
+python_and_dashboards:
   stage: validate
   image: python:3.13-alpine
   script:
     - python -m py_compile stack/demo-app/app.py
     - python -m json.tool stack/grafana/dashboards/operations-overview.json > /dev/null
+    - python -m json.tool stack/grafana/dashboards/gitlab-platform.json > /dev/null
 
 compose_validate:
   stage: validate
@@ -48,7 +50,51 @@ compose_validate:
     name: docker:29.7.2-cli
     entrypoint: [""]
   before_script:
-    - mkdir -p stack/secrets
+    - mkdir -p stack/secrets gitlab/secrets
     - printf 'gitlab-ci-placeholder\n' > stack/secrets/grafana_admin_password.txt
+    - printf 'gitlab-ci-placeholder-password\n' > gitlab/secrets/gitlab_root_password.txt
   script:
     - docker compose --env-file stack/.env.example -f stack/compose.yaml config --quiet
+    - docker compose --env-file gitlab/.env.example -f gitlab/compose.yaml config --quiet
+
+unit_tests:
+  stage: test
+  image: python:3.13-alpine
+  script:
+    - python -m unittest discover -s stack/demo-app -p 'test_*.py' -v
+
+deploy_monitoring:
+  stage: deploy
+  image: alpine:3.22
+  resource_group: monitoring-demo
+  before_script:
+    - apk add --no-cache bash openssh-client tar
+    - test -n "$MONITORING_HOST"
+    - test -n "$MONITORING_USER"
+    - test -n "$DEPLOY_SSH_PRIVATE_KEY"
+    - test -n "$DEPLOY_KNOWN_HOSTS"
+    - install -d -m 0700 ~/.ssh
+    - |
+      if [ -f "$DEPLOY_SSH_PRIVATE_KEY" ]; then
+        tr -d '\r' < "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+      else
+        printf '%s' "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+      fi
+    - chmod 0600 ~/.ssh/id_ed25519
+    - |
+      if [ -f "$DEPLOY_KNOWN_HOSTS" ]; then
+        tr -d '\r' < "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      else
+        printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+      fi
+    - chmod 0600 ~/.ssh/known_hosts
+  script:
+    - tar -C stack -czf - . | ssh -p "${MONITORING_SSH_PORT:-22}" "$MONITORING_USER@$MONITORING_HOST" 'install -d /opt/monitoring && tar -xzf - -C /opt/monitoring'
+    - ssh -p "${MONITORING_SSH_PORT:-22}" "$MONITORING_USER@$MONITORING_HOST" 'cd /opt/monitoring && chmod +x scripts/*.sh && ./scripts/deploy-local.sh'
+  environment:
+    name: demo
+    url: $GRAFANA_URL
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+    - when: never

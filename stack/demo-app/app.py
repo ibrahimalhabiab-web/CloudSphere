@@ -12,13 +12,14 @@ from urllib.parse import parse_qs, urlparse
 
 START_TIME = time.time()
 LOCK = threading.Lock()
-STATE = {
+INITIAL_STATE = {
     "orders_total": 0,
     "revenue_total": 0.0,
     "inventory_level": 100,
     "application_errors_total": 0,
     "alert_notifications_total": 0,
 }
+STATE = dict(INITIAL_STATE)
 REQUESTS = defaultdict(int)
 
 
@@ -28,6 +29,15 @@ def json_bytes(payload):
 
 def metric_label(value):
     return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+def reset_demo_state():
+    """Return the in-memory demonstration counters to their initial values."""
+    with LOCK:
+        STATE.clear()
+        STATE.update(INITIAL_STATE)
+        REQUESTS.clear()
+        return dict(STATE)
 
 
 def render_metrics():
@@ -148,6 +158,7 @@ class Handler(BaseHTTPRequestHandler):
                         "/simulate/order?amount=125&quantity=1",
                         "/simulate/restock?quantity=50",
                         "/simulate/error",
+                        "POST /simulate/reset",
                     ],
                 },
             )
@@ -156,7 +167,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_payload(404, {"error": "not found"})
 
     def do_POST(self):
-        if urlparse(self.path).path != "/alerts":
+        path = urlparse(self.path).path
+
+        if path == "/simulate/reset":
+            self.send_payload(200, {"reset": True, "state": reset_demo_state()})
+            return
+
+        if path != "/alerts":
             self.send_payload(404, {"error": "not found"})
             return
 

@@ -43,4 +43,5 @@ for attempt in $(seq 1 60); do
   sleep 5
 done
 
+sleep 30 # Allow newly-created services to settle.
 "${SCRIPT_DIR}/health-check.sh"

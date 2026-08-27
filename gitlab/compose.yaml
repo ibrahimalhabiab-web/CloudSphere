@@ -1,0 +1,87 @@
+name: internal-gitlab
+
+services:
+  gitlab:
+    image: ${GITLAB_IMAGE:-gitlab/gitlab-ce:19.3.0-ce.0}
+    container_name: internal-gitlab
+    hostname: ${GITLAB_HOSTNAME:-gitlab.internal}
+    restart: unless-stopped
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${GITLAB_EXTERNAL_URL:-http://gitlab.example.internal}'
+        gitlab_rails['initial_root_password'] = File.read('/run/secrets/gitlab_root_password').strip
+        gitlab_rails['gitlab_shell_ssh_port'] = ${GITLAB_SSH_PORT:-2222}
+        gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '10.42.0.0/16']
+        gitlab_rails['backup_keep_time'] = 604800
+        puma['worker_processes'] = 0
+        sidekiq['concurrency'] = 10
+        gitlab_rails['env'] = {
+          'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000'
+        }
+        gitaly['configuration'] = {
+          concurrency: [
+            {
+              'rpc' => '/gitaly.SmartHTTPService/PostReceivePack',
+              'max_per_repo' => 3,
+            },
+            {
+              'rpc' => '/gitaly.SSHService/SSHUploadPack',
+              'max_per_repo' => 3,
+            },
+          ],
+        }
+        gitaly['env'] = {
+          'MALLOC_CONF' => 'dirty_decay_ms:1000,muzzy_decay_ms:1000',
+          'GITALY_COMMAND_SPAWN_MAX_PARALLEL' => '2'
+        }
+        alertmanager['enable'] = false
+        gitlab_kas['enable'] = false
+        gitlab_exporter['enable'] = false
+        node_exporter['enable'] = false
+        postgres_exporter['enable'] = false
+        prometheus['enable'] = false
+        redis_exporter['enable'] = false
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        letsencrypt['enable'] = false
+    ports:
+      - "80:80"
+      - "443:443"
+      - "${GITLAB_SSH_PORT:-2222}:22"
+    volumes:
+      - ${GITLAB_HOME:-/srv/gitlab}/config:/etc/gitlab
+      - ${GITLAB_HOME:-/srv/gitlab}/logs:/var/log/gitlab
+      - ${GITLAB_HOME:-/srv/gitlab}/data:/var/opt/gitlab
+    secrets:
+      - gitlab_root_password
+    shm_size: "256m"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/-/health | grep -q 'GitLab OK'"]
+      interval: 30s
+      timeout: 10s
+      retries: 30
+      start_period: 10m
+    logging:
+      driver: json-file
+      options:
+        max-size: "25m"
+        max-file: "5"
+
+  node-exporter:
+    image: ${GITLAB_NODE_EXPORTER_IMAGE:-prom/node-exporter:v1.12.1}
+    container_name: internal-gitlab-node-exporter
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+secrets:
+  gitlab_root_password:
+    file: ./secrets/gitlab_root_password.txt

@@ -1,106 +1,111 @@
-# Internal Monitoring and Observability Platform
+# Internal GitLab and Observability Platform
 
-This project implements the brief for **RCP #13 - Prometheus and Grafana** as a complete Azure reference deployment. Terraform creates the secured Azure infrastructure, Bash automates installation and deployment, and Docker Compose runs a version-controlled monitoring stack with persistent data, dashboards, alerting, and a metrics-enabled demonstration service.
+This repository combines two complete internal-platform capabilities on Microsoft Azure:
 
-## What the project delivers
+1. A self-managed GitLab Community Edition service for repositories, merge requests, code review, CI/CD pipelines, and controlled software delivery.
+2. A Prometheus and Grafana observability service for host, container, endpoint, GitLab, runner, application, and business metrics.
 
-- Azure resource group, virtual network, subnet, static public IP, network security group, Linux VM, managed identity, boot diagnostics, and optional daily shutdown schedule.
-- Restricted public access: SSH and Grafana accept traffic only from the administrator CIDR; Prometheus and Alertmanager bind to VM localhost by default.
-- Prometheus metric collection for the host, Docker containers, the monitoring platform, endpoint uptime, and a demonstration business service.
-- Grafana provisioning as code: the Prometheus data source and an operations dashboard load automatically at startup.
-- Prometheus recording and alerting rules for availability, CPU, memory, disk, container pressure, application errors, inventory, and business inactivity.
-- Alertmanager grouping and inhibition with a local demonstration webhook. The runbook explains how to replace it with an organizational notification channel.
-- Persistent volumes, log rotation, health checks, a backup script, an operations runbook, and an acceptance test plan.
+Terraform creates two Ubuntu virtual machines in one secured virtual network. Docker Compose runs GitLab on the GitLab VM and the monitoring services plus GitLab Runner on the monitoring VM. Bash scripts provide repeatable deployment, health checking, backup, recovery, and teardown procedures.
 
-## Architecture
+## Why the combined project is useful
+
+The platform gives an engineering team one workflow from source code to operations:
+
+1. A developer pushes a branch to the internal GitLab repository.
+2. A merge request provides review and change visibility.
+3. GitLab Runner executes formatting, syntax, unit, Compose, Terraform, and secret checks.
+4. An authorized manual deployment job updates the monitoring environment.
+5. Prometheus records the health of GitLab, Runner, Azure host, containers, endpoints, and the demo application.
+6. Grafana presents the signals in provisioned dashboards.
+7. Alertmanager routes meaningful infrastructure, GitLab, and business alerts.
+
+## Implemented architecture
 
 ```mermaid
 flowchart LR
-    Admin["Administrator / Operations Team"]
-    Azure["Azure NSG: approved CIDR only"]
+    User[Developers and operators]
+    Azure[Azure NSGs: trusted CIDRs only]
 
-    subgraph VM["Azure Ubuntu VM"]
-        Grafana["Grafana :3000"]
-        Prometheus["Prometheus :9090"]
-        Alertmanager["Alertmanager :9093"]
-        Node["Node Exporter"]
-        CAdvisor["cAdvisor"]
-        Blackbox["Blackbox Exporter"]
-        Demo["Instrumented Demo App"]
-        Volumes[("Persistent Docker Volumes")]
-
-        Prometheus --> Grafana
-        Prometheus --> Alertmanager
-        Node --> Prometheus
-        CAdvisor --> Prometheus
-        Blackbox --> Prometheus
-        Demo --> Prometheus
-        Alertmanager --> Demo
-        Prometheus --> Volumes
-        Grafana --> Volumes
-        Alertmanager --> Volumes
+    subgraph GitLabVM[GitLab VM - 10.42.2.0/24]
+        GitLab[GitLab CE]
+        Repositories[(Repositories and GitLab data)]
+        GitLab --> Repositories
     end
 
-    Admin -->|"HTTPS-ready Grafana access*"| Azure
+    subgraph MonitoringVM[Monitoring VM - 10.42.1.0/24]
+        Runner[GitLab Runner]
+        Prometheus[Prometheus]
+        Grafana[Grafana]
+        Alertmanager[Alertmanager]
+        Exporters[Node Exporter, cAdvisor, Blackbox]
+        Demo[Instrumented demo application]
+        Runner --> Demo
+        Exporters --> Prometheus
+        Demo --> Prometheus
+        Prometheus --> Grafana
+        Prometheus --> Alertmanager
+    end
+
+    User --> Azure
+    Azure --> GitLab
     Azure --> Grafana
-    Admin -. "SSH tunnel for private UIs" .-> Prometheus
-
-    note["*The reference build uses restricted HTTP for grading/demo. Add TLS before production use."]
+    GitLab --> Runner
+    GitLab --> Prometheus
 ```
 
-The detailed design and production evolution path are documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The detailed design is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The requirements mapping is in [docs/PROJECT_REQUIREMENTS_MATRIX.md](docs/PROJECT_REQUIREMENTS_MATRIX.md).
 
-## Component versions
+## Main components
 
-Versions were checked against official release channels on 23 August 2026 and are pinned in `stack/.env.example`.
+| Component | Purpose |
+|---|---|
+| Microsoft Azure | Hosts the virtual network, security controls, public IPs, disks, and two Linux VMs. |
+| Terraform | Declares and provisions the Azure infrastructure reproducibly. |
+| Ubuntu Linux | Provides the secured operating-system environment for both VMs. |
+| Docker Compose | Starts GitLab and the monitoring stack from version-controlled definitions. |
+| GitLab CE | Hosts repositories, branches, merge requests, users, and pipelines. |
+| GitLab Runner | Executes CI/CD jobs with the Docker executor on the separate monitoring VM. |
+| Prometheus | Scrapes, stores, queries, and evaluates technical and business metrics. |
+| Grafana | Provides automatically provisioned operations and GitLab dashboards. |
+| Alertmanager | Groups, inhibits, routes, and resolves alerts. |
+| Node Exporter and cAdvisor | Export both Linux hosts and the monitoring VM's Docker container resource metrics. |
+| Blackbox Exporter | Independently probes HTTP health endpoints, including GitLab. |
+| Python demo application | Produces testable order, revenue, inventory, error, and webhook metrics. |
+| Bash and cloud-init | Automate installation, deployment, checks, backups, and lifecycle operations. |
 
-| Component | Version | Role |
-|---|---:|---|
-| Prometheus | 3.13.1 LTS | Time-series collection, recording rules, and alerts |
-| Alertmanager | 0.33.1 | Alert grouping, inhibition, and notification routing |
-| Grafana OSS | 13.1.0 | Dashboards and metric exploration |
-| Node Exporter | 1.12.1 | Linux host metrics |
-| Blackbox Exporter | 0.28.0 | HTTP endpoint probing |
-| cAdvisor | 0.60.5 | Docker container resource metrics |
-| AzureRM provider | 4.76.x | Azure resource provisioning |
+## Resource-sizing note
 
-## Quick start: local demonstration
+The example uses two `Standard_D2ads_v7` VMs so it can fit a small training subscription with a four-vCPU regional quota. The GitLab VM therefore represents a constrained demonstration environment, not production sizing. The Compose configuration applies GitLab's low-memory Puma, Sidekiq, Gitaly, and exporter recommendations. Current [GitLab installation requirements](https://docs.gitlab.com/install/requirements/) use an 8-vCPU/16-GB baseline for a normal single-node deployment; GitLab separately documents a [small-team constrained configuration](https://docs.gitlab.com/omnibus/settings/memory_constrained_envs/). Increase `gitlab_vm_size`, disk capacity, and subscription quota before production use.
 
-Prerequisites: Linux, Docker Engine with Compose v2, Bash, `curl`, and OpenSSL. On Windows, use WSL 2 or a Linux VM.
+Check availability before deployment:
 
 ```bash
-cd stack
-chmod +x scripts/*.sh
-./scripts/deploy-local.sh
+az vm list-skus \
+  --location uaenorth \
+  --resource-type virtualMachines \
+  --all \
+  --query "[?length(restrictions)==\`0\` && starts_with(name,'Standard_D')].{Name:name,vCPUs:capabilities[?name=='vCPUs'].value|[0],MemoryGB:capabilities[?name=='MemoryGB'].value|[0]}" \
+  -o table
 ```
 
-Open Grafana at `http://localhost:3000`. The user is `admin`; retrieve the generated password with:
+## Deploy the complete platform
 
-```bash
-cat secrets/grafana_admin_password.txt
-```
+### 1. Prerequisites
 
-Prometheus and Alertmanager are intentionally local-only:
+Use Linux, Kali, or WSL with:
 
-- Prometheus: `http://localhost:9090`
-- Alertmanager: `http://localhost:9093`
-- Demo service: `http://localhost:8000`
+- Terraform 1.8 or later
+- Azure CLI
+- Bash, OpenSSH, and `tar`
+- An Azure subscription with enough regional vCPU quota
+- An Ed25519 or RSA SSH public key
+- Your trusted public IPv4 address with `/32`
 
-## Azure deployment
-
-### 1. Prepare the workstation
-
-Install Terraform 1.8 or later, Azure CLI, Bash, OpenSSH, and `tar`. Authenticate and select the correct subscription:
+Authenticate first:
 
 ```bash
 az login
-az account set --subscription "YOUR_SUBSCRIPTION_ID_OR_NAME"
-```
-
-Create an SSH key if needed:
-
-```bash
-ssh-keygen -t ed25519 -C "azure-monitoring-admin"
+az account set --subscription "SUBSCRIPTION_ID_OR_NAME"
 ```
 
 ### 2. Configure Terraform
@@ -109,98 +114,209 @@ ssh-keygen -t ed25519 -C "azure-monitoring-admin"
 cp terraform/terraform.tfvars.example terraform/terraform.tfvars
 ```
 
-Edit `terraform/terraform.tfvars` and replace the documentation CIDR with the administrator's real public IP plus `/32`. The configuration rejects `0.0.0.0/0` to prevent accidental open access.
+Edit `terraform/terraform.tfvars`:
 
-### 3. Deploy infrastructure and services
+- Replace `admin_source_cidr` with your public IP plus `/32`.
+- Add additional trusted team ranges to `gitlab_access_cidrs`, if required.
+- Replace either VM SKU if it is unavailable in your subscription.
+- Keep both access lists restricted. Terraform rejects `0.0.0.0/0`.
+
+### 3. Deploy
 
 ```bash
-chmod +x scripts/*.sh stack/scripts/*.sh
+chmod +x scripts/*.sh stack/scripts/*.sh gitlab/scripts/*.sh
 ./scripts/deploy-azure.sh
 ```
 
-The script validates Terraform, shows an execution plan, asks for approval, creates the Azure resources, waits for cloud initialization, securely transfers the stack, starts the containers, and runs health checks.
+The script:
 
-### 4. Access the platform
+1. Formats, initializes, validates, plans, and applies Terraform.
+2. Waits for SSH and cloud-init on both VMs.
+3. Uploads and starts GitLab CE.
+4. Uploads the monitoring stack.
+5. Generates private GitLab application, health, and host-metrics targets from Terraform outputs.
+6. Starts Prometheus, Grafana, Alertmanager, exporters, demo app, and Runner.
+7. Runs GitLab and monitoring health checks.
 
-The deployment prints the Grafana URL. Retrieve the generated password without copying it into source control:
+GitLab's first initialization can take 10-20 minutes. Do not interrupt the deployment while the health check is waiting.
+
+## Access the services
+
+Terraform prints the live commands. You can display them again with:
 
 ```bash
-ssh azureadmin@PUBLIC_IP sudo cat /opt/monitoring/secrets/grafana_admin_password.txt
+terraform -chdir=terraform output
 ```
 
-Keep Prometheus private and use the Terraform output to create a tunnel:
+### GitLab
+
+Open the restricted `gitlab_url` output. The initial username is `root`.
+
+Retrieve the generated initial password:
 
 ```bash
-terraform -chdir=terraform output -raw prometheus_tunnel_command
+ssh azureadmin@GITLAB_PUBLIC_IP \
+  cat /opt/gitlab-stack/secrets/gitlab_root_password.txt
 ```
 
-Run the printed command and browse to `http://localhost:9090`.
+Rotate it after the first login. Git repository SSH is exposed on port `2222`, separately from host administration on port `22`.
 
-## Demonstrate end-to-end monitoring
+### Grafana
 
-On the VM, create business activity and controlled failures:
+Open the `grafana_url` output. The username is `admin`.
 
 ```bash
+ssh azureadmin@MONITORING_PUBLIC_IP \
+  sudo cat /opt/monitoring/secrets/grafana_admin_password.txt
+```
+
+### Prometheus and Alertmanager
+
+Keep both administrative interfaces private and use SSH tunnels:
+
+```bash
+ssh -L 9090:127.0.0.1:9090 azureadmin@MONITORING_PUBLIC_IP
+ssh -L 9093:127.0.0.1:9093 azureadmin@MONITORING_PUBLIC_IP
+```
+
+## Create the internal project and register Runner
+
+1. Sign in to the self-managed GitLab instance.
+2. Create a group and a blank project.
+3. Open **Settings > CI/CD > Runners**, create a project runner, and copy its `glrt-` authentication token.
+4. Register the runner from the monitoring VM:
+
+   ```bash
+   ssh azureadmin@MONITORING_PUBLIC_IP
+   cd /opt/monitoring
+   RUNNER_AUTH_TOKEN='PASTE_GLRT_AUTHENTICATION_TOKEN' ./scripts/register-runner.sh
+   ```
+
+   The script uses GitLab's private VNet URL for Runner polling and repository cloning. Browsers and developers continue to use the restricted public URL.
+
+5. Point the local repository at the new internal project and push:
+
+   ```bash
+   git remote add internal http://GITLAB_PUBLIC_IP/GROUP/PROJECT.git
+   git push -u internal main
+   ```
+
+Runner registration and CI/CD variables are documented in [docs/GITLAB.md](docs/GITLAB.md).
+
+## Pipeline behavior
+
+The root `.gitlab-ci.yml` provides:
+
+- Terraform formatting and provider-backed validation
+- ShellCheck for all automation scripts
+- Python syntax and unit tests
+- Grafana dashboard JSON validation
+- Both Docker Compose model validations
+- GitLab secret detection
+- A protected manual deployment job for the monitoring stack
+
+The manual deployment requires masked/protected CI/CD variables described in [docs/GITLAB.md](docs/GITLAB.md). It intentionally never creates or destroys Azure infrastructure automatically.
+
+## Demonstrate the monitoring lifecycle
+
+On the monitoring VM:
+
+```bash
+cd /opt/monitoring
 curl "http://127.0.0.1:8000/simulate/order?amount=125.50&quantity=2"
 curl "http://127.0.0.1:8000/simulate/restock?quantity=50"
 curl -i "http://127.0.0.1:8000/simulate/error"
 ```
 
-Then open **Internal Platform / Internal Monitoring - Operations Overview** in Grafana. The order, revenue, inventory, HTTP status, resource usage, endpoint status, and alert panels update automatically.
+Open these provisioned Grafana dashboards:
 
-Run the automated service check at any time:
+- **Internal Monitoring - Operations Overview**
+- **Internal GitLab - Platform Health**
+
+Return demonstration business values to their initial state:
 
 ```bash
+curl -X POST http://127.0.0.1:8000/simulate/reset
+```
+
+Prometheus may need one or two scrape intervals and Grafana may need one refresh before the zero values appear.
+
+## Stop and reopen
+
+Stop only the application containers while preserving data:
+
+```bash
+# GitLab VM
+cd /opt/gitlab-stack
+docker compose --env-file .env stop
+
+# Monitoring VM
 cd /opt/monitoring
+docker compose --env-file .env stop
+```
+
+Reopen them later:
+
+```bash
+# GitLab VM
+cd /opt/gitlab-stack
+docker compose --env-file .env start
+./scripts/health-check.sh --wait
+
+# Monitoring VM
+cd /opt/monitoring
+docker compose --env-file .env start
 ./scripts/health-check.sh
 ```
 
-The full acceptance procedure and evidence checklist are in [docs/TEST_PLAN.md](docs/TEST_PLAN.md). The checks completed in the build workspace, and the environment-dependent checks that remain, are recorded in [docs/VALIDATION_SUMMARY.md](docs/VALIDATION_SUMMARY.md).
+Azure auto-shutdown stops the VMs without deleting disks. Start both VMs from Azure, wait for SSH, and run the same Compose `start` commands if Docker did not restore them automatically.
 
-GitLab repository setup, CI/CD validation jobs, and secret-handling guidance are documented in [docs/GITLAB.md](docs/GITLAB.md).
-
-## Day-two operations
-
-Common commands:
-
-```bash
-cd /opt/monitoring
-docker compose ps
-docker compose logs --tail=200 prometheus
-docker compose restart grafana
-./scripts/backup.sh
-```
-
-Incident response, backup, upgrade, and recovery instructions are in [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md). Security controls and known production gaps are in [docs/SECURITY.md](docs/SECURITY.md).
-
-## Project structure
+## Repository structure
 
 ```text
-terraform/              Azure infrastructure as code and cloud-init
-scripts/                Azure deployment, validation, and safe teardown
-stack/                  Docker Compose monitoring platform
-  prometheus/           Scrape configuration, recording rules, alerts
-  alertmanager/         Alert routing and inhibition
-  grafana/              Provisioned data source and dashboard
-  blackbox/             HTTP probe configuration
-  demo-app/             Dependency-free instrumented business service
-  scripts/              Local deployment, health, secrets, and backup
-docs/                   Architecture, operations, security, validation, and tests
+terraform/              Azure VNet, NSGs, public IPs, two VMs, and shutdown schedules
+gitlab/                 Self-managed GitLab Compose stack, secrets, health, backup, restore
+stack/                  Prometheus/Grafana stack, GitLab Runner, exporters, and demo app
+scripts/                Combined Azure deployment, validation, and safe teardown
+docs/                   Architecture, GitLab, security, tests, operations, and requirements
+.gitlab-ci.yml           Validate, test, secret-detection, and manual deployment pipeline
 ```
 
-## Scope and production note
+## Project documentation
 
-This is a complete, deployable reference implementation for a training or internal proof-of-concept environment. A production rollout should add TLS and organizational identity, a private access path or reverse proxy, remote Terraform state, Azure Key Vault, off-VM backups, external notification integration, tested capacity targets, and a highly available or managed metrics architecture.
+- [Architecture and data flow](docs/ARCHITECTURE.md)
+- [GitLab setup, Runner registration, and CI/CD variables](docs/GITLAB.md)
+- [Operations and recovery runbook](docs/OPERATIONS_RUNBOOK.md)
+- [Security review](docs/SECURITY.md)
+- [Requirements traceability matrix](docs/PROJECT_REQUIREMENTS_MATRIX.md)
+- [Test and acceptance plan](docs/TEST_PLAN.md)
+- [Guided implementation demonstration](docs/DEMO_GUIDE.md)
+- [Build validation summary](docs/VALIDATION_SUMMARY.md)
+
+## Production evolution
+
+This implementation is a deployable training and proof-of-concept platform. Before production:
+
+- Use DNS and trusted TLS certificates for GitLab and Grafana.
+- Meet GitLab's current CPU, memory, SSD, and storage baseline.
+- Use organizational identity, MFA, role governance, and protected branches.
+- Place services behind private connectivity, VPN, or an application gateway.
+- Move secrets to Azure Key Vault or another managed store.
+- Use encrypted remote Terraform state with locking.
+- Schedule encrypted off-VM backups and test exact-version restoration.
+- Pin container image digests and scan them before deployment.
+- Separate Runner capacity and restrict Docker-socket access.
+- Establish availability, capacity, recovery-time, and recovery-point objectives.
 
 ## Official references
 
-- [Microsoft: Use Terraform to create a Linux VM](https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-terraform)
-- [HashiCorp: Azure Terraform tutorials](https://developer.hashicorp.com/terraform/tutorials/azure-get-started)
-- [Terraform Registry: AzureRM Linux virtual machine](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_virtual_machine)
-- [Prometheus: Installation with Docker](https://prometheus.io/docs/prometheus/latest/installation/)
-- [Prometheus: Configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)
-- [Prometheus: Recording and alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/)
-- [Prometheus: Alerting overview](https://prometheus.io/docs/alerting/latest/overview/)
-- [Grafana: Provision data sources and dashboards](https://grafana.com/docs/grafana/latest/administration/provisioning/)
+- [GitLab: Install in Docker](https://docs.gitlab.com/install/docker/installation/)
+- [GitLab: Installation requirements](https://docs.gitlab.com/install/requirements/)
+- [GitLab: Register runners](https://docs.gitlab.com/runner/register/)
+- [GitLab: Health checks](https://docs.gitlab.com/administration/monitoring/health_check/)
+- [GitLab: External Prometheus monitoring](https://docs.gitlab.com/administration/monitoring/prometheus/)
+- [GitLab: Docker backups](https://docs.gitlab.com/install/docker/backup/)
+- [Microsoft: Terraform Linux VM](https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-terraform)
 - [Docker: Compose file reference](https://docs.docker.com/compose/compose-file/)
-- [Docker: Manage secrets in Compose](https://docs.docker.com/compose/how-tos/use-secrets/)
+- [Prometheus: Configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)
+- [Grafana: Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)

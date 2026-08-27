@@ -54,9 +54,9 @@ variable "admin_source_cidr" {
 }
 
 variable "vm_size" {
-  description = "Azure VM size. Standard_B2s is suitable for a small demonstration environment."
+  description = "Monitoring VM size. Select a two-vCPU SKU available to the subscription and region."
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_D2ads_v7"
 }
 
 variable "os_disk_size_gb" {
@@ -67,6 +67,36 @@ variable "os_disk_size_gb" {
   validation {
     condition     = var.os_disk_size_gb >= 32
     error_message = "os_disk_size_gb must be at least 32 GiB."
+  }
+}
+
+variable "gitlab_vm_size" {
+  description = "GitLab VM size. The default is a constrained training SKU; use at least the current GitLab baseline for production."
+  type        = string
+  default     = "Standard_D2ads_v7"
+}
+
+variable "gitlab_os_disk_size_gb" {
+  description = "GitLab operating-system and repository disk size in GiB. Increase it for real repositories and artifacts."
+  type        = number
+  default     = 128
+
+  validation {
+    condition     = var.gitlab_os_disk_size_gb >= 64
+    error_message = "gitlab_os_disk_size_gb must be at least 64 GiB."
+  }
+}
+
+variable "gitlab_access_cidrs" {
+  description = "Trusted public IPv4 CIDRs allowed to reach GitLab web and repository SSH. An empty list uses admin_source_cidr."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.gitlab_access_cidrs : can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"
+    ])
+    error_message = "Every GitLab access CIDR must be valid and must not be 0.0.0.0/0."
   }
 }
 
@@ -105,6 +135,6 @@ variable "tags" {
   default = {
     owner       = "cloud-project"
     managed-by  = "terraform"
-    application = "monitoring"
+    application = "gitlab-observability"
   }
 }

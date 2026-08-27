@@ -11,7 +11,18 @@ checks=(
   "Grafana|http://127.0.0.1:3000/api/health"
   "Demo application|http://127.0.0.1:8000/health"
   "Demo metrics|http://127.0.0.1:8000/metrics"
+  "GitLab Runner metrics|http://127.0.0.1:9252/metrics"
 )
+
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+  if [[ "${GITLAB_PRIVATE_URL:-}" =~ ^https?:// ]]; then
+    checks+=("GitLab private health|${GITLAB_PRIVATE_URL%/}/-/health")
+  fi
+fi
 
 failures=0
 for item in "${checks[@]}"; do

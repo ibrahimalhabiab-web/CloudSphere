@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 TF_DIR="${PROJECT_ROOT}/terraform"
 STACK_DIR="${PROJECT_ROOT}/stack"
+GITLAB_DIR="${PROJECT_ROOT}/gitlab"
 
 failures=0
 
@@ -30,7 +31,11 @@ fi
 
 if command -v python3 >/dev/null 2>&1; then
   run_check "Demo application syntax" python3 -m py_compile "${STACK_DIR}/demo-app/app.py"
+  run_check "Demo application unit tests" python3 -m unittest discover -s "${STACK_DIR}/demo-app" -p 'test_*.py'
   run_check "Grafana dashboard JSON" python3 -m json.tool "${STACK_DIR}/grafana/dashboards/operations-overview.json"
+  if [[ -f "${STACK_DIR}/grafana/dashboards/gitlab-platform.json" ]]; then
+    run_check "GitLab dashboard JSON" python3 -m json.tool "${STACK_DIR}/grafana/dashboards/gitlab-platform.json"
+  fi
 else
   printf '[skip] Python 3 is not installed.\n'
 fi
@@ -39,7 +44,11 @@ if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; 
   if [[ ! -f "${STACK_DIR}/secrets/grafana_admin_password.txt" ]]; then
     "${STACK_DIR}/scripts/init-secrets.sh" >/dev/null
   fi
-  run_check "Docker Compose model" docker compose --project-directory "${STACK_DIR}" --env-file "${STACK_DIR}/.env.example" -f "${STACK_DIR}/compose.yaml" config --quiet
+  if [[ ! -f "${GITLAB_DIR}/secrets/gitlab_root_password.txt" ]]; then
+    "${GITLAB_DIR}/scripts/init-secrets.sh" >/dev/null
+  fi
+  run_check "Monitoring Compose model" docker compose --project-directory "${STACK_DIR}" --env-file "${STACK_DIR}/.env.example" -f "${STACK_DIR}/compose.yaml" config --quiet
+  run_check "GitLab Compose model" docker compose --project-directory "${GITLAB_DIR}" --env-file "${GITLAB_DIR}/.env.example" -f "${GITLAB_DIR}/compose.yaml" config --quiet
 else
   printf '[skip] Docker Compose is not installed.\n'
 fi

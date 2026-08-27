@@ -12,6 +12,7 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
+      - ./prometheus/file_sd:/etc/prometheus/file_sd:ro
       - prometheus_data:/prometheus
     ports:
       - 127.0.0.1:9090:9090
@@ -153,6 +154,25 @@ services:
       retries: 5
       start_period: 10s
 
+  gitlab-runner:
+    image: ${GITLAB_RUNNER_IMAGE:-gitlab/gitlab-runner:v19.3.0}
+    container_name: monitoring-gitlab-runner
+    command:
+      - run
+      - --user=gitlab-runner
+      - --working-directory=/home/gitlab-runner
+      - --listen-address=:9252
+    volumes:
+      - gitlab_runner_config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 127.0.0.1:9252:9252
+    networks:
+      - monitoring
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
 networks:
   monitoring:
     name: monitoring_network
@@ -165,6 +185,8 @@ volumes:
     name: monitoring_alertmanager_data
   grafana_data:
     name: monitoring_grafana_data
+  gitlab_runner_config:
+    name: monitoring_gitlab_runner_config
 
 secrets:
   grafana_admin_password:

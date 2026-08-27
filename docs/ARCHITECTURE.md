@@ -1,53 +1,121 @@
-# Architecture Design
+# Combined Platform Architecture
 
 ## 1. Design goal
 
-The platform provides one operational view of host health, container health, service uptime, application behavior, and selected business metrics. The reference architecture emphasizes repeatability, low demonstration cost, and clear security boundaries while remaining small enough to deploy from a student or proof-of-concept Azure subscription.
+The platform joins internal software delivery and operational observability in one repeatable Azure environment. GitLab hosts source code, collaboration, merge requests, and pipelines. A separate monitoring workload collects the health of GitLab, Runner, Linux, Docker, endpoints, and a business demonstration service.
 
-## 2. Architecture decisions
+## 2. Deployment model
 
-| Decision | Implementation | Rationale |
+| Layer | Implementation | Responsibility |
 |---|---|---|
-| Deployment model | One Ubuntu 24.04 LTS Azure VM | Keeps the reference environment understandable and economical. |
-| Infrastructure management | Terraform with AzureRM provider | Produces a repeatable plan and auditable desired state. |
-| Application packaging | Docker Compose | Defines services, volumes, networks, and restart behavior in one version-controlled model. |
-| Metric storage | Prometheus local persistent volume | Supports the required PromQL, rule, and dashboard workflow without an external dependency. |
-| Visualization | Grafana provisioned from files | Eliminates manual data-source and dashboard setup. |
-| Host telemetry | Node Exporter | Supplies CPU, memory, disk, and operating-system metrics. |
-| Container telemetry | cAdvisor | Supplies per-container CPU, memory, filesystem, and network metrics. |
-| Availability | Blackbox Exporter | Probes important HTTP health endpoints independently of their own metrics. |
-| Notifications | Alertmanager to demonstration webhook | Proves routing, grouping, inhibition, and delivery without requiring private organizational credentials. |
-| Secrets | Compose secret file generated with OpenSSL | Prevents a default Grafana password from being stored in the repository. |
+| Azure foundation | One resource group, one VNet, two subnets, two NSGs, two static public IPs | Isolation, restricted ingress, routing, identity, disks, and lifecycle |
+| GitLab VM | Ubuntu 24.04, Docker Compose, GitLab CE, Node Exporter | Repositories, branches, merge requests, users, CI orchestration, artifacts, and host telemetry |
+| Monitoring VM | Ubuntu 24.04, Docker Compose | Runner, Prometheus, Grafana, Alertmanager, exporters, and demo application |
+| Infrastructure as code | Terraform and cloud-init | Repeatable Azure provisioning and host bootstrap |
+| Operations automation | Bash | Deployment, secrets, health checks, Runner registration, backup, restore, and teardown |
 
-## 3. Data flow
+The two-VM split follows the operational principle that CI workers should not compete directly with the GitLab application. For the training subscription, Runner shares the monitoring VM. Production should normally provide dedicated, autoscaled Runner capacity.
 
-1. Exporters and the demonstration application expose Prometheus-format metrics on the private Docker network.
-2. Prometheus scrapes every target at 15-second intervals and writes samples to its persistent volume.
-3. Recording rules precompute host utilization and application error ratios for efficient dashboard queries.
-4. Alerting rules evaluate every 15 seconds. Pending conditions become firing alerts only after their specified duration.
-5. Prometheus forwards firing and resolved alerts to Alertmanager.
-6. Alertmanager groups, inhibits, and sends notifications to the demonstration webhook endpoint.
-7. Grafana queries Prometheus through the private Docker network and renders the provisioned operations dashboard.
+## 3. Azure topology
+
+```mermaid
+flowchart TB
+    Internet[Trusted administrators and developers]
+
+    subgraph Azure[Azure resource group]
+        VNet[10.42.0.0/16 virtual network]
+
+        subgraph GitLabSubnet[GitLab subnet 10.42.2.0/24]
+            GitLabNSG[GitLab NSG]
+            GitLabVM[GitLab VM]
+            GitLabDisk[(Config, logs, repositories, database, artifacts)]
+            GitLabNSG --> GitLabVM
+            GitLabVM --> GitLabDisk
+        end
+
+        subgraph MonitoringSubnet[Monitoring subnet 10.42.1.0/24]
+            MonitoringNSG[Monitoring NSG]
+            MonitoringVM[Monitoring VM]
+            MetricsDisk[(Prometheus, Grafana, Alertmanager, Runner config)]
+            MonitoringNSG --> MonitoringVM
+            MonitoringVM --> MetricsDisk
+        end
+
+        VNet --> GitLabSubnet
+        VNet --> MonitoringSubnet
+    end
+
+    Internet --> GitLabNSG
+    Internet --> MonitoringNSG
+    GitLabVM --> MonitoringVM
+    MonitoringVM --> GitLabVM
+```
 
 ## 4. Network boundaries
 
 | Path | Exposure | Control |
 |---|---|---|
-| SSH, TCP 22 | Public IP | Azure NSG permits only `admin_source_cidr`. |
-| Grafana, TCP 3000 | Public IP | Azure NSG permits only `admin_source_cidr`; authentication is mandatory. |
-| Prometheus, TCP 9090 | VM loopback | Use SSH port forwarding; optional public exposure is disabled by default. |
-| Alertmanager, TCP 9093 | VM loopback | Use SSH port forwarding when administrative access is needed. |
-| Demo application, TCP 8000 | VM loopback | Used only for local demonstration traffic and alert delivery. |
-| Exporter ports | Docker bridge only | No host publishing or Azure inbound rule. |
+| GitLab host SSH, TCP 22 | GitLab public IP | `admin_source_cidr` only |
+| GitLab HTTP/HTTPS, TCP 80/443 | GitLab public IP | `gitlab_access_cidrs`, falling back to the administrator CIDR |
+| Git repository SSH, TCP 2222 | GitLab public IP | Same trusted GitLab CIDRs |
+| Grafana, TCP 3000 | Monitoring public IP | Administrator CIDR only |
+| Monitoring host SSH, TCP 22 | Monitoring public IP | Administrator CIDR only |
+| Prometheus, TCP 9090 | Monitoring VM loopback | SSH tunnel only by default |
+| Alertmanager, TCP 9093 | Monitoring VM loopback | SSH tunnel only |
+| Demo service, TCP 8000 | Monitoring VM loopback | Local demonstration traffic only |
+| GitLab metrics, health, and Node Exporter | Private VNet | GitLab monitoring allowlist includes `10.42.0.0/16`; the GitLab NSG has no public exporter rule |
+| Exporters and Runner metrics | Monitoring Docker network | No Azure public rule |
 
-## 5. Persistence and recovery
+Azure NSGs retain the default VNet-to-VNet allowance, so Prometheus can reach GitLab's private address without opening metrics endpoints to the internet.
 
-Prometheus, Grafana, and Alertmanager each use an explicitly named Docker volume. The backup script creates timestamped compressed archives plus SHA-256 checksums. These archives remain on the VM in the reference build; production requires scheduled transfer to encrypted off-VM storage and periodic restore testing.
+## 5. Git and CI/CD flow
 
-## 6. Security model
+1. A developer pushes a feature branch to self-managed GitLab.
+2. GitLab creates a pipeline for the commit or merge request.
+3. GitLab Runner on the monitoring VM starts isolated Docker executor containers.
+4. Validation jobs check Terraform, Bash, Python, unit tests, dashboards, Compose models, and committed secrets.
+5. A reviewer evaluates the merge request and pipeline result.
+6. The default branch exposes a protected manual deployment job.
+7. The deployment job transfers only the monitoring stack to the authorized monitoring VM and runs its idempotent deployment script.
+8. Infrastructure apply and destroy remain explicit operator actions outside CI.
 
-The design uses SSH keys only, rejects an open administrator CIDR, keeps non-user interfaces private, disables anonymous Grafana access, generates a high-entropy password, applies `no-new-privileges` where compatible, enables Ubuntu unattended upgrades, and rotates Docker logs. cAdvisor is the exception: host-level container telemetry requires privileged access and read-only host mounts. That risk is documented and should be isolated or replaced in higher-assurance environments.
+## 6. Monitoring flow
 
-## 7. Scalability and production evolution
+1. Prometheus scrapes its own service, both Linux hosts, cAdvisor, Blackbox Exporter, the demo application, GitLab Runner, and GitLab's `/-/metrics` endpoint.
+2. Blackbox Exporter independently probes GitLab `/-/health` along with monitoring-service health endpoints.
+3. Recording rules calculate host utilization, application error ratios, and GitLab availability ratios.
+4. Alert rules cover target loss, HTTP probe failures, host pressure, container pressure, GitLab availability, Runner availability, application errors, inventory, and order inactivity.
+5. Alertmanager groups and routes alerts to the included demonstration webhook.
+6. Grafana loads the data source and both dashboards automatically from version-controlled JSON.
 
-The single VM is deliberately not highly available. A production architecture should separate ingestion, storage, visualization, and notification concerns; add redundant Prometheus replicas or a scalable long-term store; deploy Grafana behind TLS and single sign-on; place interfaces behind private networking or a controlled application gateway; store secrets in Azure Key Vault; protect Terraform state remotely; and ship backups outside the VM. Capacity decisions should be based on measured active-series count, scrape frequency, retention, dashboard concurrency, and recovery objectives.
+## 7. Persistence
+
+### GitLab VM
+
+The Compose stack bind-mounts:
+
+- `/srv/gitlab/config` to `/etc/gitlab`
+- `/srv/gitlab/logs` to `/var/log/gitlab`
+- `/srv/gitlab/data` to `/var/opt/gitlab`
+
+This preserves configuration, secrets, repositories, PostgreSQL data, Redis data, uploads, artifacts, and application backups across container replacement.
+
+### Monitoring VM
+
+Named volumes preserve Prometheus, Grafana, Alertmanager, and GitLab Runner configuration. Configuration files and dashboards remain in `/opt/monitoring` and are version controlled.
+
+## 8. Security decisions
+
+- SSH keys only; Linux password authentication is disabled.
+- Terraform rejects unrestricted `0.0.0.0/0` administrator or GitLab access.
+- GitLab and Grafana authentication are mandatory.
+- Initial passwords are generated on their target hosts and ignored by Git.
+- GitLab metrics are allowed only from loopback and the private VNet.
+- Prometheus and Alertmanager stay loopback-only.
+- Runner registration and deployment keys are never stored in the repository.
+- The CI deployment is manual and restricted to the default branch.
+- Restore and destroy scripts require explicit confirmation.
+
+## 9. Availability and production evolution
+
+The reference design is intentionally single-node for each platform capability and is not highly available. Its training-sized GitLab profile applies GitLab's documented Puma, Sidekiq, Gitaly, and memory-allocation adjustments and disables unused bundled exporters while keeping the externally scraped application metrics endpoint. Production evolution should add DNS and TLS, private connectivity, managed secrets, remote Terraform state, tested off-VM backups, dedicated Runner capacity, image digest pinning, vulnerability scanning, organizational identity, audit retention, and a capacity model based on measured GitLab requests, repository size, pipeline concurrency, Prometheus series, and dashboard use.

@@ -9,9 +9,14 @@ ssh_public_key_path = "~/.ssh/id_ed25519.pub"
 # Find it with: curl -4 https://ifconfig.me
 admin_source_cidr = "203.0.113.10/32"
 
-vm_size            = "Standard_B2s"
+vm_size            = "Standard_D2ads_v7"
 os_disk_size_gb     = 64
+gitlab_vm_size      = "Standard_D2ads_v7"
+gitlab_os_disk_size_gb = 128
 expose_prometheus   = false
+
+# Leave empty to restrict GitLab to admin_source_cidr, or add trusted team CIDRs.
+gitlab_access_cidrs = []
 
 auto_shutdown_enabled  = true
 auto_shutdown_time     = "2300"
@@ -20,6 +25,6 @@ auto_shutdown_timezone = "Arab Standard Time"
 tags = {
   owner       = "cloud-project"
   managed-by  = "terraform"
-  application = "monitoring"
+  application = "gitlab-observability"
   cost-center = "training"
 }

@@ -2,7 +2,7 @@ groups:
   - name: platform-availability
     rules:
       - alert: PrometheusTargetDown
-        expr: up == 0
+        expr: up{job!~"gitlab|gitlab-node|gitlab-runner"} == 0
         for: 2m
         labels:
           severity: critical
@@ -10,10 +10,10 @@ groups:
         annotations:
           summary: "Prometheus target is unavailable"
           description: "Target {{ $labels.instance }} in job {{ $labels.job }} has been down for more than two minutes."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#target-down"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#6-prometheus-target-or-endpoint-down"
 
       - alert: MonitoredEndpointDown
-        expr: probe_success == 0
+        expr: probe_success{job!="gitlab-health"} == 0
         for: 2m
         labels:
           severity: critical
@@ -21,7 +21,51 @@ groups:
         annotations:
           summary: "Monitored HTTP endpoint is unavailable"
           description: "Blackbox checks for {{ $labels.instance }} have failed for more than two minutes."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#endpoint-down"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#6-prometheus-target-or-endpoint-down"
+
+      - alert: GitLabServiceUnavailable
+        expr: up{job="gitlab"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-engineering
+        annotations:
+          summary: "GitLab metrics endpoint is unavailable"
+          description: "Prometheus has been unable to scrape the self-managed GitLab instance for five minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#4-gitlab-unavailable"
+
+      - alert: GitLabEndpointUnavailable
+        expr: probe_success{job="gitlab-health"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform-engineering
+        annotations:
+          summary: "GitLab health endpoint is unavailable"
+          description: "The independent HTTP probe of the GitLab health endpoint has failed for five minutes."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#4-gitlab-unavailable"
+
+      - alert: GitLabRunnerUnavailable
+        expr: up{job="gitlab-runner"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-engineering
+        annotations:
+          summary: "GitLab Runner metrics are unavailable"
+          description: "The monitoring host cannot scrape the GitLab Runner metrics endpoint."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#5-runner-unavailable"
+
+      - alert: GitLabHostMetricsUnavailable
+        expr: up{job="gitlab-node"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform-engineering
+        annotations:
+          summary: "GitLab host metrics are unavailable"
+          description: "Prometheus cannot scrape Node Exporter on the GitLab VM."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#4-gitlab-unavailable"
 
   - name: platform-capacity
     rules:
@@ -34,7 +78,7 @@ groups:
         annotations:
           summary: "Sustained host CPU pressure"
           description: "CPU utilization on {{ $labels.instance }} has exceeded 85% for ten minutes."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#high-cpu"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#7-host-or-container-pressure"
 
       - alert: HostHighMemory
         expr: instance:node_memory_utilisation:ratio > 0.90
@@ -45,7 +89,7 @@ groups:
         annotations:
           summary: "Sustained host memory pressure"
           description: "Memory utilization on {{ $labels.instance }} has exceeded 90% for ten minutes."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#high-memory"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#7-host-or-container-pressure"
 
       - alert: HostFilesystemLowSpace
         expr: instance:node_filesystem_utilisation:ratio{mountpoint="/"} > 0.85
@@ -56,7 +100,7 @@ groups:
         annotations:
           summary: "Host root filesystem is running low on free space"
           description: "Root filesystem utilization on {{ $labels.instance }} has exceeded 85% for fifteen minutes."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#low-disk-space"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#7-host-or-container-pressure"
 
       - alert: ContainerHighCPU
         expr: sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) > 0.80
@@ -67,7 +111,7 @@ groups:
         annotations:
           summary: "Container CPU usage is high"
           description: "Container {{ $labels.name }} has consumed more than 0.8 CPU cores for ten minutes."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#container-pressure"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#7-host-or-container-pressure"
 
   - name: business-service
     rules:
@@ -80,7 +124,7 @@ groups:
         annotations:
           summary: "Application error ratio exceeds 5%"
           description: "The demonstration application's five-minute HTTP error ratio is {{ $value | humanizePercentage }}."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#application-errors"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
 
       - alert: DemoInventoryLow
         expr: demo_inventory_level < 20
@@ -91,7 +135,7 @@ groups:
         annotations:
           summary: "Demonstration inventory is low"
           description: "The simulated inventory level has fallen below 20 units. Current level: {{ $value }}."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#low-inventory"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
 
       - alert: DemoNoRecentOrders
         expr: increase(demo_orders_total[30m]) == 0
@@ -102,4 +146,4 @@ groups:
         annotations:
           summary: "No demonstration orders in the last thirty minutes"
           description: "The order counter has not increased. This is expected until traffic is generated during the demonstration."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#no-orders"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"

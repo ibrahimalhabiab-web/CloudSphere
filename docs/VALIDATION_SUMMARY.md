@@ -1,37 +1,43 @@
 # Validation Summary
 
-Validation date: 23 August 2026
+Validation date: 26 August 2026
 
 ## Passed in the build workspace
 
 | Check | Result | Scope |
 |---|---|---|
-| Demo application syntax | PASS | Python abstract syntax tree compilation |
-| Demo application functional test | PASS | Health, order, revenue, inventory, simulated error, alert webhook, and Prometheus metrics |
-| ShellCheck 0.10 | PASS | All seven Bash files at warning severity |
-| YAML parsing | PASS | Nine Compose, cloud-init, Prometheus, Alertmanager, Blackbox, and Grafana files |
-| HCL parsing | PASS | Five active Terraform files |
-| PromQL parsing | PASS | All recording rules, alert expressions, and Grafana queries |
-| Grafana dashboard structure | PASS | 12 unique panels, valid 24-column geometry, no overlap |
-| Compose security assertions | PASS | Prometheus, Alertmanager, and demo app are loopback-only; expected service set present |
-| Terraform security assertions | PASS | Open CIDR rejection, Grafana NSG rule, and optional Prometheus exposure gate |
-| Documentation links | PASS | All relative links resolve |
-| Report structural audit | PASS | Preset tokens, real numbering, eight fixed-geometry tables, hyperlinks, footer field |
-| Report accessibility audit | PASS | Zero high, medium, or low findings |
+| Terraform formatting | PASS | All active Terraform files with Terraform 1.15.8 |
+| Terraform initialization and validation | PASS | Isolated provider-backed validation with AzureRM 4.81.0 |
+| Provider integrity | PASS | Windows AzureRM 4.81.0 archive matched HashiCorp's published SHA-256 value |
+| Demo application syntax | PASS | Python byte-code compilation |
+| Demo application unit tests | PASS | Three tests covering metric escaping, required business metrics, and reset behavior |
+| ShellCheck 0.10 and Bash syntax | PASS | All 13 Bash deployment, lifecycle, health, Runner, backup, and restore scripts |
+| YAML parsing | PASS | 15 CI, Compose, cloud-init, Prometheus, Alertmanager, Blackbox, and provisioning files; duplicate keys rejected |
+| JSON parsing | PASS | Both Grafana dashboard definitions |
+| Configuration assertions | PASS | Expected Compose services, GitLab monitoring jobs, restricted Terraform access, and secret exclusions |
+| Documentation links | PASS | All 12 relative links across 12 Markdown files resolve |
+| Final report structure | PASS | Valid OOXML package, 145 paragraphs, seven fixed-geometry data tables, real headings/lists, and one consistent Letter section |
+| Final report accessibility | PASS | Zero high-, medium-, or low-severity findings from the DOCX accessibility audit |
+| Git patch hygiene | PASS | No whitespace errors reported by `git diff --check` |
 
-## Requires the authorized target environment
+The tracked Terraform dependency lock selects AzureRM 4.81.0. Runtime passwords, `.env` files, state, plans, private keys, Runner tokens, and GitLab backup archives are excluded from version control and from the delivery archive.
 
-The build workspace did not provide Terraform, Docker Engine, Azure CLI, Azure credentials, or a Linux VM. The following checks are intentionally not claimed as completed:
+## Validated by the GitLab pipeline
 
-- `terraform init`, provider-backed `terraform validate`, plan, apply, and destroy.
-- Docker Compose model validation against the installed Docker release and full stack startup.
-- Prometheus target health and rule evaluation using the official runtime.
-- Grafana dashboard rendering with live Prometheus data.
-- Alertmanager firing/resolved notification behavior inside the Compose network.
-- Azure NSG, boot diagnostics, auto-shutdown, persistence, backup, and teardown acceptance.
+The root `.gitlab-ci.yml` repeats the main checks in clean Linux containers. It additionally runs both full Docker Compose model validations and GitLab secret detection. A passing pipeline on the self-managed GitLab instance is required final evidence because this Windows build workspace does not provide Docker Engine.
 
-Run `scripts/validate.sh` and then follow `docs/TEST_PLAN.md` in the authorized Azure/Linux environment. Capture non-sensitive evidence and redact subscription IDs, public IP addresses, user identities, and secrets.
+The final Word report could not be rendered to page images in this workspace because LibreOffice is not installed and Microsoft Word cannot open from the background execution session. It passed package integrity, style, section, heading, table-geometry, hyperlink, and accessibility audits. Open it once in Microsoft Word and review pagination before institutional submission.
 
-## Document rendering note
+## Requires the authorized Azure environment
 
-The report passed structural and accessibility audits. LibreOffice was not installed and the workspace could not create a usable Microsoft Word rendering session, so page-image visual QA could not be completed here. Open the report once in Microsoft Word and review pagination before final institutional submission.
+The following checks require the user's Azure subscription, trusted network, live VMs, and GitLab account and are therefore not claimed as completed in this build workspace:
+
+- `terraform plan`, approved `apply`, and final `destroy` against the selected Azure subscription.
+- Both Compose stacks starting successfully on Ubuntu and surviving a stop/start cycle.
+- Initial GitLab sign-in, password rotation, group/project creation, member roles, protected `main`, and a reviewed merge request.
+- Project Runner registration, online status, repository cloning over the private VNet, and a passing pipeline.
+- Protected manual deployment with verified SSH host keys and masked CI/CD variables.
+- Prometheus GitLab, GitLab host, Runner, health, application, host, container, and blackbox targets reporting `UP`.
+- Live Grafana dashboards, firing/resolved alerts, backup checksum verification, guarded restore rehearsal, and persistence after restart.
+
+Run `scripts/validate.sh`, then follow `docs/TEST_PLAN.md` and `docs/DEMO_GUIDE.md` on the authorized environment. Capture non-sensitive screenshots and redact passwords, tokens, SSH keys, subscription identifiers, and public IP addresses.
