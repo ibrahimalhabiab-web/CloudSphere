@@ -25,7 +25,7 @@ if [[ "${1:-}" == "--wait" ]]; then
 fi
 
 for attempt in $(seq 1 "${attempts}"); do
-  if docker exec internal-gitlab docker exec internal-gitlab curl -fsS --max-time 10 "${health_url}" | grep -q 'GitLab OK' && \
+  if docker exec internal-gitlab curl -fsS --max-time 10 "${health_url}" | grep 'GitLab OK' && \
     curl -fsS --max-time 10 "${node_metrics_url}" >/dev/null; then
     printf '[gitlab-health] PASS  %s\n' "${health_url}"
     printf '[gitlab-health] PASS  %s\n' "${node_metrics_url}"
