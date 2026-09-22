@@ -146,7 +146,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
       "id": 7,
       "options": {"legend": {"calcs": ["lastNotNull", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
-      "targets": [{"editorMode": "code", "expr": "sum by (status) (rate(demo_http_requests_total[5m]))", "legendFormat": "HTTP {{status}}", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "sum by (status) (rate(demo_http_requests_total[30s]))", "legendFormat": "HTTP {{status}}", "range": true, "refId": "A"}],
       "title": "Application Request Rate by Status",
       "type": "timeseries"
     },
@@ -212,7 +212,7 @@
     }
   ],
   "preload": false,
-  "refresh": "30s",
+  "refresh": "2s",
   "schemaVersion": 41,
   "tags": ["prometheus", "azure", "observability", "internal-platform"],
   "templating": {"list": []},

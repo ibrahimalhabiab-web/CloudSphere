@@ -1,6 +1,6 @@
 groups:
   - name: platform-recording-rules
-    interval: 30s
+    interval: 2s
     rules:
       - record: instance:node_cpu_utilisation:ratio
         expr: 1 - avg without (cpu, mode) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
@@ -11,8 +11,8 @@ groups:
       - record: instance:node_filesystem_utilisation:ratio
         expr: 1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"})
 
-      - record: demo:http_error_ratio:rate5m
-        expr: sum(rate(demo_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(demo_http_requests_total[5m])), 0.001)
+      - record: demo:http_error_ratio:rate30s
+        expr: sum(rate(demo_http_requests_total{status=~"5.."}[30s])) / clamp_min(sum(rate(demo_http_requests_total[30s])), 0.001)
 
       - record: demo:orders:rate5m
         expr: rate(demo_orders_total[5m])

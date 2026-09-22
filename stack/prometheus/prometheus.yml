@@ -1,7 +1,8 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-  scrape_timeout: 10s
+  # Keep platform-wide collection modest; the demo application overrides this below.
+  scrape_interval: 5s
+  evaluation_interval: 2s
+  scrape_timeout: 4s
   external_labels:
     platform: azure-internal
     environment: demo
@@ -34,6 +35,10 @@ scrape_configs:
           - cadvisor:8080
 
   - job_name: demo-application
+    # Presentation mode: synchronize order and error metrics rapidly without
+    # increasing scrape load on every infrastructure and GitLab target.
+    scrape_interval: 2s
+    scrape_timeout: 1s
     metrics_path: /metrics
     static_configs:
       - targets:

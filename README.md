@@ -219,7 +219,24 @@ The manual deployment requires masked/protected CI/CD variables described in [do
 
 ## Demonstrate the monitoring lifecycle
 
-On the monitoring VM:
+Open the browser-based **CloudSphere Demo Control** through the monitoring tunnel:
+
+```text
+http://127.0.0.1:8000
+```
+
+The presentation console can:
+
+- create a custom order or three prepared demo orders;
+- restock the simulated inventory;
+- generate one controlled error or a complete 20-error alert sequence;
+- display the current orders, revenue, inventory, and error counters;
+- reset all demonstration values; and
+- open Grafana, Prometheus Alerts, and Alertmanager in separate tabs.
+
+Keep CloudSphere and the **Internal Monitoring - Operations Overview** Grafana dashboard side by side. In presentation mode, Prometheus scrapes and evaluates the demo metrics every two seconds, and the Grafana dashboard refreshes every two seconds.
+
+The original HTTP endpoints remain available as an operator fallback on the monitoring VM:
 
 ```bash
 cd /opt/monitoring
@@ -291,6 +308,7 @@ docs/                   Architecture, GitLab, security, tests, operations, and r
 - [Requirements traceability matrix](docs/PROJECT_REQUIREMENTS_MATRIX.md)
 - [Test and acceptance plan](docs/TEST_PLAN.md)
 - [Guided implementation demonstration](docs/DEMO_GUIDE.md)
+- [CloudSphere browser controls and deployment](docs/CLOUDSPHERE_DEMO_CONTROL.md)
 - [Build validation summary](docs/VALIDATION_SUMMARY.md)
 
 ## Production evolution

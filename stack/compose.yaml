@@ -55,6 +55,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_MIN_REFRESH_INTERVAL: "2s"
       GF_DATE_FORMATS_DEFAULT_TIMEZONE: ${TZ:-Asia/Riyadh}
     secrets:
       - grafana_admin_password

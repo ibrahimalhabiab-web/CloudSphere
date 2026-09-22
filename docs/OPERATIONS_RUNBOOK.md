@@ -134,7 +134,15 @@ docker compose --env-file .env restart gitlab-runner
 
 ## 8. Demo application and dashboard reset
 
-Generate activity:
+Use the browser-based CloudSphere Demo Control for a presentation:
+
+```text
+http://127.0.0.1:8000
+```
+
+Select **Generate 3 demo orders** for business activity, **Trigger alert sequence** for the controlled high-error demonstration, and **Reset all metrics** for recovery. The page polls its own current state and links directly to Grafana, Prometheus Alerts, and Alertmanager through the local SSH tunnels.
+
+If the browser controls are unavailable, use these operator fallback endpoints:
 
 ```bash
 curl "http://127.0.0.1:8000/simulate/order?amount=125.50&quantity=2"
@@ -148,7 +156,7 @@ Reset the in-memory demonstration values:
 curl -X POST http://127.0.0.1:8000/simulate/reset
 ```
 
-Wait for one or two Prometheus scrape intervals and refresh Grafana. Historical graphs still show earlier samples; use a short time range to focus on the new state.
+Wait for one or two two-second Prometheus scrape intervals and refresh Grafana. The high-error recording rule uses a thirty-second rate window, so the alert may take roughly 30–45 seconds to return to `INACTIVE` after reset. Historical graphs still show earlier samples; use a short time range to focus on the new state.
 
 ## 9. Monitoring backup
 

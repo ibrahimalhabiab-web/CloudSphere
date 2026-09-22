@@ -116,14 +116,14 @@ groups:
   - name: business-service
     rules:
       - alert: DemoApplicationHighErrorRate
-        expr: demo:http_error_ratio:rate5m > 0.05
-        for: 5m
+        expr: demo:http_error_ratio:rate30s > 0.05
+        for: 10s
         labels:
           severity: critical
           team: application
         annotations:
           summary: "Application error ratio exceeds 5%"
-          description: "The demonstration application's five-minute HTTP error ratio is {{ $value | humanizePercentage }}."
+          description: "The demonstration application's thirty-second HTTP error ratio is {{ $value | humanizePercentage }}."
           runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
 
       - alert: DemoInventoryLow
