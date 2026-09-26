@@ -6,13 +6,13 @@
         "datasource": {"type": "grafana", "uid": "-- Grafana --"},
         "enable": true,
         "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
+        "iconColor": "#2BC3E8",
         "name": "Annotations & Alerts",
         "type": "dashboard"
       }
     ]
   },
-  "description": "Operational, application, uptime, and business metrics for the internal monitoring platform.",
+  "description": "Live health of the Azure monitoring and GitLab servers, Docker services, endpoints, and infrastructure alerts. Operate. Observe. Respond.",
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -21,7 +21,7 @@
   "panels": [
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "description": "Percentage of internal HTTP endpoints currently responding successfully.",
+      "description": "Percentage of monitored Azure server exporters currently reachable by Prometheus.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -32,9 +32,9 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "red", "value": null},
-              {"color": "orange", "value": 75},
-              {"color": "green", "value": 100}
+              {"color": "#FF7A90", "value": null},
+              {"color": "#F6C85F", "value": 75},
+              {"color": "#48D6A0", "value": 100}
             ]
           },
           "unit": "percent"
@@ -55,158 +55,306 @@
         "wideLayout": true
       },
       "targets": [
-        {"editorMode": "code", "expr": "100 * avg(probe_success)", "instant": false, "legendFormat": "Availability", "range": true, "refId": "A"}
+        {"editorMode": "code", "expr": "100 * avg(up{job=~\"node|gitlab-node\"})", "legendFormat": "Servers", "range": true, "refId": "A"}
       ],
-      "title": "Service Availability",
+      "title": "Server Availability",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Number of currently firing non-demo infrastructure alerts.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
-          "decimals": 1,
-          "max": 100,
+          "decimals": 0,
+          "mappings": [{"options": {"0": {"color": "#48D6A0", "text": "CLEAR"}}, "type": "value"}],
           "min": 0,
-          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 85}]},
-          "unit": "percent"
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#48D6A0", "value": null}, {"color": "#FF7A90", "value": 1}]},
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
-      "id": 2,
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_cpu_utilisation:ratio)", "legendFormat": "CPU", "range": true, "refId": "A"}],
-      "title": "Host CPU",
+      "id": 5,
+      "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(ALERTS{alertstate=\"firing\",alertname!~\"Demo.*\"}) or vector(0)", "legendFormat": "Alerts", "range": true, "refId": "A"}],
+      "title": "Active Infra Alerts",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Highest CPU utilization currently reported by either Azure server.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
           "decimals": 1,
           "max": 100,
           "min": 0,
-          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 75}, {"color": "red", "value": 90}]},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#2BC3E8", "value": null}, {"color": "#F6C85F", "value": 70}, {"color": "#FF7A90", "value": 85}]},
           "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
-      "id": 3,
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_memory_utilisation:ratio)", "legendFormat": "Memory", "range": true, "refId": "A"}],
-      "title": "Host Memory",
+      "id": 2,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_cpu_utilisation:ratio{job=~\"node|gitlab-node\"})", "legendFormat": "Peak CPU", "range": true, "refId": "A"}],
+      "title": "Peak Host CPU",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Highest memory utilization currently reported by either Azure server.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
           "decimals": 1,
           "max": 100,
           "min": 0,
-          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 75}, {"color": "red", "value": 85}]},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#5B8CFF", "value": null}, {"color": "#F6C85F", "value": 75}, {"color": "#FF7A90", "value": 90}]},
           "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
-      "id": 4,
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_filesystem_utilisation:ratio{mountpoint=\"/\"})", "legendFormat": "Root disk", "range": true, "refId": "A"}],
-      "title": "Root Disk Used",
+      "id": 3,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_memory_utilisation:ratio{job=~\"node|gitlab-node\"})", "legendFormat": "Peak Memory", "range": true, "refId": "A"}],
+      "title": "Peak Host Memory",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "continuous-GrYlRd"}, "decimals": 0, "unit": "short"}, "overrides": []},
+      "description": "Highest root-filesystem utilization currently reported by either Azure server.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "decimals": 1,
+          "max": 100,
+          "min": 0,
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#9B8CFF", "value": null}, {"color": "#F6C85F", "value": 75}, {"color": "#FF7A90", "value": 85}]},
+          "unit": "percent"
+        },
+        "overrides": []
+      },
       "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
-      "id": 5,
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "demo_orders_total", "legendFormat": "Orders", "range": true, "refId": "A"}],
-      "title": "Orders Processed",
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_filesystem_utilisation:ratio{job=~\"node|gitlab-node\",mountpoint=\"/\"})", "legendFormat": "Peak Root Disk", "range": true, "refId": "A"}],
+      "title": "Peak Root Disk",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "continuous-GrYlRd"}, "decimals": 2, "unit": "currencyUSD"}, "overrides": []},
+      "description": "Uptime of the most recently restarted monitored Azure server.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"fixedColor": "#65D9F4", "mode": "fixed"},
+          "decimals": 0,
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#65D9F4", "value": null}]},
+          "unit": "s"
+        },
+        "overrides": []
+      },
       "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
       "id": 6,
-      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "demo_revenue_total", "legendFormat": "Revenue", "range": true, "refId": "A"}],
-      "title": "Simulated Revenue",
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "min(time() - node_boot_time_seconds{job=~\"node|gitlab-node\"})", "legendFormat": "Youngest Host", "range": true, "refId": "A"}],
+      "title": "Youngest Host Uptime",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 18, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "unit": "reqps"}, "overrides": []},
+      "description": "CPU, memory, and root-disk pressure for the monitoring and GitLab hosts.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "Utilization", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 16, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}},
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "color", "value": {"fixedColor": "#2BC3E8", "mode": "fixed"}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "color", "value": {"fixedColor": "#5B8CFF", "mode": "fixed"}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "color", "value": {"fixedColor": "#9B8CFF", "mode": "fixed"}}]}
+        ]
+      },
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
-      "id": 7,
-      "options": {"legend": {"calcs": ["lastNotNull", "mean"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
-      "targets": [{"editorMode": "code", "expr": "sum by (status) (rate(demo_http_requests_total[30s]))", "legendFormat": "HTTP {{status}}", "range": true, "refId": "A"}],
-      "title": "Application Request Rate by Status",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "unit": "percent"}, "overrides": []},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
       "id": 8,
       "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
       "targets": [
-        {"editorMode": "code", "expr": "100 * instance:node_cpu_utilisation:ratio", "legendFormat": "CPU", "range": true, "refId": "A"},
-        {"editorMode": "code", "expr": "100 * instance:node_memory_utilisation:ratio", "legendFormat": "Memory", "range": true, "refId": "B"},
-        {"editorMode": "code", "expr": "100 * instance:node_filesystem_utilisation:ratio{mountpoint=\"/\"}", "legendFormat": "Root disk", "range": true, "refId": "C"}
+        {"editorMode": "code", "expr": "100 * instance:node_cpu_utilisation:ratio{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · CPU", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "100 * instance:node_memory_utilisation:ratio{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · Memory", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "100 * instance:node_filesystem_utilisation:ratio{job=~\"node|gitlab-node\",mountpoint=\"/\"}", "legendFormat": "{{role}} · Root disk", "range": true, "refId": "C"}
       ],
-      "title": "Host Resource Utilization",
+      "title": "Fleet Resource Utilization",
       "type": "timeseries"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "CPU cores", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 12, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "unit": "cores"}, "overrides": []},
+      "description": "One-, five-, and fifteen-minute Linux load averages for both Azure servers.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "Load average", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 14, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}},
+          "unit": "short"
+        },
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "color", "value": {"fixedColor": "#2BC3E8", "mode": "fixed"}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "color", "value": {"fixedColor": "#5B8CFF", "mode": "fixed"}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "C"}, "properties": [{"id": "color", "value": {"fixedColor": "#9B8CFF", "mode": "fixed"}}]}
+        ]
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "id": 13,
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "node_load1{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · 1m", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "node_load5{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · 5m", "range": true, "refId": "B"},
+        {"editorMode": "code", "expr": "node_load15{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · 15m", "range": true, "refId": "C"}
+      ],
+      "title": "Server Load Average",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Inbound and outbound traffic, excluding loopback and container bridge interfaces.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "Bytes per second", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 18, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}},
+          "unit": "Bps"
+        },
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "color", "value": {"fixedColor": "#2BC3E8", "mode": "fixed"}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "color", "value": {"fixedColor": "#9B8CFF", "mode": "fixed"}}]}
+        ]
+      },
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "id": 7,
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "sum by (role) (rate(node_network_receive_bytes_total{job=~\"node|gitlab-node\",device!~\"^(lo|veth.*|docker.*|br-.*)$\"}[2m]))", "legendFormat": "{{role}} · Receive", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "sum by (role) (rate(node_network_transmit_bytes_total{job=~\"node|gitlab-node\",device!~\"^(lo|veth.*|docker.*|br-.*)$\"}[2m]))", "legendFormat": "{{role}} · Transmit", "range": true, "refId": "B"}
+      ],
+      "title": "Network Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Read and write throughput for whole physical or virtual disks on both Azure servers.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "Bytes per second", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 18, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}},
+          "unit": "Bps"
+        },
+        "overrides": [
+          {"matcher": {"id": "byFrameRefID", "options": "A"}, "properties": [{"id": "color", "value": {"fixedColor": "#5B8CFF", "mode": "fixed"}}]},
+          {"matcher": {"id": "byFrameRefID", "options": "B"}, "properties": [{"id": "color", "value": {"fixedColor": "#F6C85F", "mode": "fixed"}}]}
+        ]
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "id": 14,
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+      "targets": [
+        {"editorMode": "code", "expr": "sum by (role) (rate(node_disk_read_bytes_total{job=~\"node|gitlab-node\",device=~\"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$\"}[2m]))", "legendFormat": "{{role}} · Read", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "sum by (role) (rate(node_disk_written_bytes_total{job=~\"node|gitlab-node\",device=~\"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$\"}[2m]))", "legendFormat": "{{role}} · Write", "range": true, "refId": "B"}
+      ],
+      "title": "Disk I/O Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "The eight busiest CloudSphere monitoring containers by recent CPU use.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "CPU cores", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 14, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}},
+          "unit": "cores"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
       "id": 9,
       "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
-      "targets": [{"editorMode": "code", "expr": "topk(8, sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])))", "legendFormat": "{{name}}", "range": true, "refId": "A"}],
-      "title": "Container CPU - Top 8",
+      "targets": [{"editorMode": "code", "expr": "topk(8, sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"monitoring-.+\"}[5m])))", "legendFormat": "{{name}}", "range": true, "refId": "A"}],
+      "title": "Container CPU · Top 8",
       "type": "timeseries"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 15, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}}, "overrides": []},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "description": "The eight CloudSphere monitoring containers using the most working memory.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "Memory", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 14, "gradientMode": "opacity", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "insertNulls": false, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}},
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
       "id": 10,
-      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
-      "targets": [
-        {"editorMode": "code", "expr": "increase(demo_orders_total[15m])", "legendFormat": "Orders / 15m", "range": true, "refId": "A"},
-        {"editorMode": "code", "expr": "increase(demo_revenue_total[15m])", "legendFormat": "Revenue / 15m", "range": true, "refId": "B"},
-        {"editorMode": "code", "expr": "demo_inventory_level", "legendFormat": "Inventory", "range": true, "refId": "C"}
-      ],
-      "title": "Business Activity",
+      "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "topk(8, max by (name) (container_memory_working_set_bytes{name=~\"monitoring-.+\"}))", "legendFormat": "{{name}}", "range": true, "refId": "A"}],
+      "title": "Container Memory · Top 8",
       "type": "timeseries"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"0": {"color": "red", "text": "DOWN"}, "1": {"color": "green", "text": "UP"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}, "overrides": []},
-      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 21},
+      "description": "Prometheus scrape status for the infrastructure and monitoring components.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [{"options": {"0": {"color": "#FF7A90", "text": "OFFLINE"}, "1": {"color": "#48D6A0", "text": "ONLINE"}}, "type": "value"}],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#FF7A90", "value": null}, {"color": "#48D6A0", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 29},
       "id": 11,
-      "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "instance"}]},
-      "targets": [{"editorMode": "code", "expr": "probe_success", "format": "table", "instant": true, "legendFormat": "{{instance}}", "refId": "A"}],
-      "title": "Endpoint Status",
-      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "job": true}, "indexByName": {"instance": 0, "Value": 1}, "renameByName": {"Value": "Status", "instance": "Endpoint"}}}],
+      "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "Service"}]},
+      "targets": [{"editorMode": "code", "expr": "up{job=~\"prometheus|node|containers|blackbox-exporter|gitlab|gitlab-node|gitlab-runner|demo-application\"}", "format": "table", "instant": true, "legendFormat": "{{job}}", "refId": "A"}],
+      "title": "Infrastructure Target Status",
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true}, "indexByName": {"job": 0, "role": 1, "instance": 2, "Value": 3}, "renameByName": {"Value": "Status", "instance": "Target", "job": "Service", "role": "Role"}}}],
       "type": "table"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []},
-      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 21},
+      "description": "Blackbox HTTP checks for CloudSphere, Grafana, Prometheus, Alertmanager, and GitLab.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [{"options": {"0": {"color": "#FF7A90", "text": "DOWN"}, "1": {"color": "#48D6A0", "text": "HEALTHY"}}, "type": "value"}],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#FF7A90", "value": null}, {"color": "#48D6A0", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 29},
+      "id": 15,
+      "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "Endpoint"}]},
+      "targets": [{"editorMode": "code", "expr": "probe_success{job=~\"service-uptime|gitlab-health\"}", "format": "table", "instant": true, "legendFormat": "{{instance}}", "refId": "A"}],
+      "title": "HTTP Endpoint Health",
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true}, "indexByName": {"instance": 0, "job": 1, "role": 2, "Value": 3}, "renameByName": {"Value": "Status", "instance": "Endpoint", "job": "Probe", "role": "Role"}}}],
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "description": "Non-demo infrastructure alerts currently firing. An empty table means no active infrastructure incident.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "#48D6A0", "value": null}, {"color": "#FF7A90", "value": 1}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 7, "w": 24, "x": 0, "y": 36},
       "id": 12,
       "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
-      "targets": [{"editorMode": "code", "expr": "ALERTS{alertstate=\"firing\"}", "format": "table", "instant": true, "refId": "A"}],
-      "title": "Firing Alerts",
+      "targets": [{"editorMode": "code", "expr": "ALERTS{alertstate=\"firing\",alertname!~\"Demo.*\"}", "format": "table", "instant": true, "refId": "A"}],
+      "title": "Active Infrastructure Alerts",
       "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "alertstate": true, "job": true}, "renameByName": {"Value": "State", "alertname": "Alert", "instance": "Instance", "severity": "Severity"}}}],
       "type": "table"
     }
@@ -214,13 +362,13 @@
   "preload": false,
   "refresh": "2s",
   "schemaVersion": 41,
-  "tags": ["prometheus", "azure", "observability", "internal-platform"],
+  "tags": ["cloudsphere", "infrastructure", "azure", "prometheus", "observability"],
   "templating": {"list": []},
-  "time": {"from": "now-6h", "to": "now"},
+  "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
-  "title": "Internal Monitoring - Operations Overview",
+  "title": "CloudSphere — Infrastructure Command Center",
   "uid": "internal-ops-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": "saturday"
 }
