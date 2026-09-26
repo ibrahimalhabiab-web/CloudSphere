@@ -251,9 +251,11 @@ curl -i "http://127.0.0.1:8000/simulate/error"
 Open these provisioned Grafana dashboards:
 
 - **CloudSphere — Infrastructure Command Center**
-- **Internal GitLab - Platform Health**
+- **CloudSphere — GitLab Control Plane**
 
 The Infrastructure Command Center summarizes both Azure hosts with availability, fast host CPU, memory, root-disk use, uptime, load averages, network and disk throughput, container CPU and memory, Prometheus target state, HTTP endpoint health, and pending or firing platform alerts. Controlled presentation alerts are included while passive order and inventory reminders are excluded. Its cyan, blue, violet, green, amber, and red signals follow the CloudSphere identity while preserving familiar operational severity colors.
+
+The GitLab Control Plane applies the same CloudSphere visual system to the self-managed GitLab service, HTTP health endpoint, Runner, GitLab VM telemetry, host capacity, network and disk throughput, scrape quality, target status, and GitLab-scoped alert pipeline.
 
 Return CloudSphere business values to their initial state:
 

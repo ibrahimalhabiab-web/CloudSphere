@@ -20,7 +20,7 @@
 6. **Show CD:** explain the protected manual deployment job and why infrastructure apply remains operator approved.
 7. **Show runtime:** display Compose `ps` on both VMs.
 8. **Show targets:** display GitLab, GitLab health, Runner, host, container, and application Prometheus jobs.
-9. **Show dashboards:** place CloudSphere Operations Console and the CloudSphere Infrastructure Command Center side by side, then briefly open GitLab Platform Health.
+9. **Show dashboards:** place CloudSphere Operations Console and the CloudSphere Infrastructure Command Center side by side, then briefly open the CloudSphere GitLab Control Plane.
 10. **Generate business activity:** select **Generate 3 orders** and show the order, revenue, and inventory counters in CloudSphere while Grafana remains focused on server and container health.
 11. **Show application alerting:** select **Trigger alert sequence** and show `CloudSphereApplicationHighErrorRate` progress from `INACTIVE` to `PENDING` to `FIRING` in Prometheus and Grafana.
 12. **Show infrastructure pressure:** open Grafana from the CloudSphere shortcut, select **Run 30-second server load**, and show the CloudSphere container CPU, host CPU, load average, and `CloudSphereControlledCpuLoad` alert react.

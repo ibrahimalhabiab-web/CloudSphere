@@ -50,7 +50,7 @@ The GitLab pipeline must also pass its validation and unit-test stages.
 |---|---|---|---|
 | T13 | Container state | Run Compose `ps` on both VMs. | GitLab is healthy; monitoring services and Runner are running. |
 | T14 | Prometheus targets | Open **Status > Targets**. | Core, GitLab application, GitLab host, GitLab health, Runner, exporter, and application targets are up. |
-| T15 | Dashboard provisioning | Open Grafana. | CloudSphere Infrastructure Command Center and GitLab Platform Health dashboards exist without manual import. |
+| T15 | Dashboard provisioning | Open Grafana. | CloudSphere Infrastructure Command Center and CloudSphere GitLab Control Plane dashboards exist without manual import. |
 | T16 | GitLab metrics | Query `up{job="gitlab"}` and `scrape_samples_scraped{job="gitlab"}`. | GitLab is `1` and returns non-zero samples. |
 | T17 | GitLab probe | Query `probe_success{job="gitlab-health"}`. | Independent GitLab health probe returns `1`. |
 | T18 | Runner and GitLab host metrics | Query `up{job="gitlab-runner"}` and `up{job="gitlab-node"}`. | Both metrics targets return `1`. |
