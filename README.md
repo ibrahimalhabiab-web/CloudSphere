@@ -250,6 +250,8 @@ Open these provisioned Grafana dashboards:
 - **CloudSphere — Infrastructure Command Center**
 - **Internal GitLab - Platform Health**
 
+The Infrastructure Command Center summarizes both Azure hosts with availability, peak CPU, memory, root-disk use, uptime, load averages, network and disk throughput, container CPU and memory, Prometheus target state, HTTP endpoint health, and active non-demo infrastructure alerts. Its cyan, blue, violet, green, amber, and red signals follow the CloudSphere identity while preserving familiar operational severity colors.
+
 Return demonstration business values to their initial state:
 
 ```bash
