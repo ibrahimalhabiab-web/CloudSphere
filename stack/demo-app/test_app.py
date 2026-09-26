@@ -63,6 +63,7 @@ class DemoApplicationTests(unittest.TestCase):
         page = app.DASHBOARD_HTML.decode("utf-8")
         for expected in (
             "CloudSphere Demo Control",
+            "/assets/cloudsphere-avatar.png",
             "Generate 3 demo orders",
             "Trigger alert sequence",
             "Reset all metrics",
@@ -102,6 +103,14 @@ class DemoApplicationHTTPTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(payload["state"]["inventory_level"], 100)
             self.assertEqual(payload["service"]["version"], "2.1.0")
+
+    def test_brand_avatar_is_served_as_png(self):
+        with urllib.request.urlopen(f"{self.base_url}{app.BRAND_AVATAR_URL}", timeout=2) as response:
+            body = response.read()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), "image/png")
+            self.assertEqual(response.headers.get("Cache-Control"), "public, max-age=86400")
+            self.assertTrue(body.startswith(b"\x89PNG\r\n\x1a\n"))
 
 
 if __name__ == "__main__":

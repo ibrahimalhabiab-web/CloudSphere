@@ -21,6 +21,9 @@ INITIAL_STATE = {
 }
 STATE = dict(INITIAL_STATE)
 REQUESTS = defaultdict(int)
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+BRAND_AVATAR_URL = "/assets/cloudsphere-avatar.png"
+BRAND_AVATAR_PATH = os.path.join(APP_DIR, "assets", "cloudsphere-avatar.png")
 
 
 DASHBOARD_HTML = r"""<!doctype html>
@@ -33,19 +36,25 @@ DASHBOARD_HTML = r"""<!doctype html>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #07101f;
-      --surface: rgba(15, 28, 49, 0.88);
-      --surface-strong: #101d32;
-      --line: rgba(148, 163, 184, 0.17);
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --cyan: #22d3ee;
-      --blue: #3b82f6;
-      --violet: #8b5cf6;
-      --green: #34d399;
-      --amber: #fbbf24;
-      --red: #fb7185;
-      --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      --bg: #061326;
+      --bg-deep: #07182d;
+      --bg-indigo: #17183f;
+      --surface: rgba(15, 32, 55, 0.92);
+      --surface-strong: #132743;
+      --line: rgba(73, 110, 153, 0.34);
+      --line-active: #496e99;
+      --text: #f4f8ff;
+      --text-secondary: #b9c7de;
+      --muted: #93a6c2;
+      --cyan: #2bc3e8;
+      --cyan-light: #65d9f4;
+      --blue: #5b8cff;
+      --indigo: #3948a6;
+      --violet: #9b8cff;
+      --green: #48d6a0;
+      --amber: #f6c85f;
+      --red: #ff7a90;
+      --shadow: 0 24px 60px rgba(1, 7, 18, 0.38);
     }
 
     * { box-sizing: border-box; }
@@ -55,9 +64,9 @@ DASHBOARD_HTML = r"""<!doctype html>
       min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(circle at 15% 5%, rgba(59, 130, 246, 0.22), transparent 29rem),
-        radial-gradient(circle at 88% 14%, rgba(139, 92, 246, 0.18), transparent 27rem),
-        linear-gradient(150deg, #050b16 0%, #091426 50%, #07101f 100%);
+        radial-gradient(circle at 12% 0%, rgba(43, 195, 232, 0.16), transparent 34rem),
+        radial-gradient(circle at 88% 12%, rgba(57, 72, 166, 0.28), transparent 38rem),
+        linear-gradient(135deg, var(--bg) 0%, #081426 54%, var(--bg-indigo) 100%);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.5;
     }
@@ -68,8 +77,8 @@ DASHBOARD_HTML = r"""<!doctype html>
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(rgba(148, 163, 184, 0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(148, 163, 184, 0.025) 1px, transparent 1px);
+        linear-gradient(rgba(101, 217, 244, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(101, 217, 244, 0.025) 1px, transparent 1px);
       background-size: 42px 42px;
       mask-image: linear-gradient(to bottom, black, transparent 90%);
     }
@@ -78,7 +87,7 @@ DASHBOARD_HTML = r"""<!doctype html>
     button, input { font: inherit; }
 
     button:focus-visible, input:focus-visible, a:focus-visible {
-      outline: 3px solid rgba(34, 211, 238, 0.45);
+      outline: 3px solid var(--cyan-light);
       outline-offset: 3px;
     }
 
@@ -97,20 +106,37 @@ DASHBOARD_HTML = r"""<!doctype html>
       margin-bottom: 30px;
     }
 
-    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand { display: flex; align-items: center; gap: 15px; }
 
     .logo {
+      position: relative;
       display: grid;
       place-items: center;
-      width: 46px;
-      height: 46px;
-      border-radius: 15px;
-      background: linear-gradient(135deg, var(--cyan), var(--blue) 52%, var(--violet));
-      box-shadow: 0 12px 30px rgba(59, 130, 246, 0.34);
+      width: 60px;
+      height: 60px;
+      flex: 0 0 60px;
     }
 
-    .logo svg { width: 27px; height: 27px; }
-    .brand-name { font-size: 1.15rem; font-weight: 780; letter-spacing: -0.02em; }
+    .logo::before {
+      content: "";
+      position: absolute;
+      inset: 10%;
+      border-radius: 50%;
+      background: rgba(43, 195, 232, 0.13);
+      filter: blur(16px);
+    }
+
+    .logo img {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 14px rgba(43, 195, 232, 0.24));
+    }
+
+    .brand-name { color: var(--text); font-size: 1.18rem; font-weight: 780; letter-spacing: -0.02em; }
 
     .brand-subtitle {
       color: var(--muted);
@@ -126,8 +152,8 @@ DASHBOARD_HTML = r"""<!doctype html>
       padding: 9px 13px;
       border: 1px solid var(--line);
       border-radius: 999px;
-      background: rgba(15, 28, 49, 0.7);
-      color: #cbd5e1;
+      background: rgba(15, 32, 55, 0.78);
+      color: var(--text-secondary);
       font-size: 0.84rem;
     }
 
@@ -141,7 +167,13 @@ DASHBOARD_HTML = r"""<!doctype html>
 
     .connection.online .connection-dot {
       background: var(--green);
-      box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.1);
+      box-shadow: 0 0 0 5px rgba(72, 214, 160, 0.12), 0 0 18px rgba(72, 214, 160, 0.32);
+    }
+
+    .connection.online {
+      border-color: rgba(72, 214, 160, 0.3);
+      background: rgba(72, 214, 160, 0.1);
+      color: #c7fbe8;
     }
 
     .hero {
@@ -173,13 +205,14 @@ DASHBOARD_HTML = r"""<!doctype html>
     }
 
     h1 span {
-      color: transparent;
-      background: linear-gradient(90deg, #67e8f9, #60a5fa 55%, #c4b5fd);
+      color: var(--cyan-light);
+      background: linear-gradient(90deg, #2bd3f0 0%, var(--blue) 58%, var(--violet) 100%);
       background-clip: text;
       -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .hero p { max-width: 680px; margin: 18px 0 0; color: #aebbd0; font-size: 1rem; }
+    .hero p { max-width: 680px; margin: 18px 0 0; color: var(--text-secondary); font-size: 1rem; }
     .quick-links { display: grid; gap: 9px; }
 
     .quick-link {
@@ -191,19 +224,20 @@ DASHBOARD_HTML = r"""<!doctype html>
       padding: 0 14px;
       border: 1px solid var(--line);
       border-radius: 13px;
-      background: rgba(15, 28, 49, 0.62);
-      color: #dbeafe;
+      background: rgba(15, 32, 55, 0.78);
+      color: #e7effb;
       text-decoration: none;
       transition: 160ms ease;
     }
 
     .quick-link:hover {
-      transform: translateX(4px);
-      border-color: rgba(96, 165, 250, 0.45);
-      background: rgba(30, 58, 98, 0.58);
+      transform: translateX(2px);
+      border-color: var(--cyan-light);
+      background: var(--surface-strong);
+      box-shadow: 0 10px 28px rgba(43, 195, 232, 0.09);
     }
 
-    .quick-link small { color: var(--muted); }
+    .quick-link small { color: var(--cyan-light); }
 
     .stats {
       display: grid;
@@ -218,7 +252,7 @@ DASHBOARD_HTML = r"""<!doctype html>
       padding: 19px;
       border: 1px solid var(--line);
       border-radius: 18px;
-      background: linear-gradient(145deg, rgba(18, 35, 59, 0.93), rgba(11, 22, 39, 0.88));
+      background: linear-gradient(145deg, rgba(19, 39, 67, 0.96), rgba(11, 27, 49, 0.94));
       box-shadow: var(--shadow);
     }
 
@@ -318,7 +352,7 @@ DASHBOARD_HTML = r"""<!doctype html>
     label {
       display: grid;
       gap: 7px;
-      color: #cbd5e1;
+      color: var(--text-secondary);
       font-size: 0.8rem;
       font-weight: 650;
     }
@@ -329,14 +363,14 @@ DASHBOARD_HTML = r"""<!doctype html>
       padding: 0 13px;
       border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(4, 12, 25, 0.72);
+      background: rgba(4, 15, 31, 0.8);
       color: var(--text);
       transition: 160ms ease;
     }
 
     input:hover, input:focus {
-      border-color: rgba(96, 165, 250, 0.48);
-      background: rgba(7, 18, 35, 0.86);
+      border-color: var(--cyan-light);
+      background: rgba(7, 24, 45, 0.92);
     }
 
     .button-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
@@ -359,12 +393,12 @@ DASHBOARD_HTML = r"""<!doctype html>
     .button:disabled { cursor: not-allowed; opacity: 0.52; }
 
     .button-primary {
-      background: linear-gradient(135deg, #38bdf8, #2563eb);
-      color: white;
-      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #071326;
+      box-shadow: 0 10px 24px rgba(43, 195, 232, 0.2);
     }
 
-    .button-secondary { border-color: var(--line); background: rgba(30, 47, 71, 0.68); color: #dbeafe; }
+    .button-secondary { border-color: var(--line); background: rgba(19, 39, 67, 0.78); color: #e7effb; }
 
     .button-danger {
       background: linear-gradient(135deg, #fb7185, #e11d48);
@@ -379,7 +413,7 @@ DASHBOARD_HTML = r"""<!doctype html>
     }
 
     .divider { height: 1px; margin: 21px 0; background: var(--line); }
-    .section-label { margin-bottom: 11px; color: #dbeafe; font-size: 0.85rem; font-weight: 700; }
+    .section-label { margin-bottom: 11px; color: #e7effb; font-size: 0.85rem; font-weight: 700; }
 
     .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
 
@@ -388,13 +422,13 @@ DASHBOARD_HTML = r"""<!doctype html>
       padding: 8px;
       border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(8, 19, 35, 0.58);
-      color: #dbeafe;
+      background: rgba(8, 25, 47, 0.72);
+      color: #e7effb;
       cursor: pointer;
       transition: 160ms ease;
     }
 
-    .preset:hover { border-color: rgba(34, 211, 238, 0.4); background: rgba(15, 41, 63, 0.72); }
+    .preset:hover { border-color: var(--cyan-light); background: var(--surface-strong); }
     .preset strong, .preset small { display: block; }
     .preset small { margin-top: 2px; color: var(--muted); }
 
@@ -437,7 +471,7 @@ DASHBOARD_HTML = r"""<!doctype html>
       text-align: center;
     }
 
-    .timeline-step strong { display: block; color: #dbeafe; font-size: 0.72rem; }
+    .timeline-step strong { display: block; color: #e7effb; font-size: 0.72rem; }
     .timeline-step small { color: var(--muted); font-size: 0.68rem; }
     .log-panel { grid-column: 1 / -1; }
 
@@ -465,7 +499,7 @@ DASHBOARD_HTML = r"""<!doctype html>
     .log-kind { color: #7dd3fc; font-weight: 720; text-transform: uppercase; }
     .log-kind.error { color: #fda4af; }
     .log-kind.success { color: #6ee7b7; }
-    .log-message { color: #cbd5e1; }
+    .log-message { color: var(--text-secondary); }
 
     .footer { display: flex; justify-content: space-between; gap: 20px; margin-top: 20px; color: #64748b; font-size: 0.75rem; }
 
@@ -500,12 +534,27 @@ DASHBOARD_HTML = r"""<!doctype html>
     @media (max-width: 610px) {
       .shell { width: min(100% - 20px, 1180px); padding-top: 16px; }
       .topbar { align-items: flex-start; }
-      .connection { padding: 8px 10px; }
-      .connection span:last-child { display: none; }
+      .brand { gap: 11px; }
+      .logo { width: 48px; height: 48px; flex-basis: 48px; }
+      .connection { position: relative; padding: 8px 10px; }
+      .connection span:last-child {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
       .hero { margin-top: 14px; }
       h1 { font-size: 2.65rem; }
       .quick-links, .stats, .form-grid, .preset-grid { grid-template-columns: 1fr; }
       .quick-link { flex-direction: row; align-items: center; }
+      .hero > *, .workspace > *, .stats > *, .panel-header > *, .alert-head > *, .progress-meta > *, .log-item > * { min-width: 0; }
+      .panel, .panel-header, .panel-body, .alert-card, .log-panel { min-width: 0; max-width: 100%; }
+      .button { max-width: 100%; white-space: normal; }
       .timeline { grid-template-columns: 1fr; }
       .log-item { grid-template-columns: 63px 74px 1fr; gap: 7px; }
       .footer { flex-direction: column; }
@@ -521,10 +570,7 @@ DASHBOARD_HTML = r"""<!doctype html>
     <header class="topbar">
       <div class="brand">
         <div class="logo" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8">
-            <circle cx="12" cy="12" r="7.4"></circle>
-            <path d="M4.8 9.6h14.4M4.8 14.4h14.4M12 4.6c2.1 2 3.2 4.5 3.2 7.4S14.1 17.4 12 19.4C9.9 17.4 8.8 14.9 8.8 12S9.9 6.6 12 4.6Z"></path>
-          </svg>
+          <img src="/assets/cloudsphere-avatar.png" alt="">
         </div>
         <div>
           <div class="brand-name">CloudSphere</div>
@@ -1027,12 +1073,12 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             REQUESTS[(self.command, path, str(status))] += 1
 
-    def send_payload(self, status, payload, content_type="application/json; charset=utf-8"):
+    def send_payload(self, status, payload, content_type="application/json; charset=utf-8", cache_control="no-store"):
         body = payload if isinstance(payload, bytes) else json_bytes(payload)
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache_control)
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header(
@@ -1047,6 +1093,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
+
+        if parsed.path == BRAND_AVATAR_URL:
+            try:
+                with open(BRAND_AVATAR_PATH, "rb") as avatar_file:
+                    avatar = avatar_file.read()
+            except OSError:
+                self.send_payload(404, {"error": "brand avatar not found"})
+            else:
+                self.send_payload(200, avatar, "image/png", "public, max-age=86400")
+            return
 
         if parsed.path == "/":
             self.send_payload(200, DASHBOARD_HTML, "text/html; charset=utf-8")
