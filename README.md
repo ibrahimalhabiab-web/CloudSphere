@@ -15,7 +15,7 @@ The platform gives an engineering team one workflow from source code to operatio
 2. A merge request provides review and change visibility.
 3. GitLab Runner executes formatting, syntax, unit, Compose, Terraform, and secret checks.
 4. An authorized manual deployment job updates the monitoring environment.
-5. Prometheus records the health of GitLab, Runner, Azure host, containers, endpoints, and the demo application.
+5. Prometheus records the health of GitLab, Runner, Azure host, containers, endpoints, and the CloudSphere application.
 6. Grafana presents the signals in provisioned dashboards.
 7. Alertmanager routes meaningful infrastructure, GitLab, and business alerts.
 
@@ -38,10 +38,10 @@ flowchart LR
         Grafana[Grafana]
         Alertmanager[Alertmanager]
         Exporters[Node Exporter, cAdvisor, Blackbox]
-        Demo[Instrumented demo application]
-        Runner --> Demo
+        CloudSphereApp[Instrumented CloudSphere application]
+        Runner --> CloudSphereApp
         Exporters --> Prometheus
-        Demo --> Prometheus
+        CloudSphereApp --> Prometheus
         Prometheus --> Grafana
         Prometheus --> Alertmanager
     end
@@ -70,12 +70,12 @@ The detailed design is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The requ
 | Alertmanager | Groups, inhibits, routes, and resolves alerts. |
 | Node Exporter and cAdvisor | Export both Linux hosts and the monitoring VM's Docker container resource metrics. |
 | Blackbox Exporter | Independently probes HTTP health endpoints, including GitLab. |
-| Python demo application | Produces testable order, revenue, inventory, error, and webhook metrics. |
+| Python CloudSphere application | Produces testable order, revenue, inventory, error, and webhook metrics. |
 | Bash and cloud-init | Automate installation, deployment, checks, backups, and lifecycle operations. |
 
 ## Resource-sizing note
 
-The example uses two `Standard_D2ads_v7` VMs so it can fit a small training subscription with a four-vCPU regional quota. The GitLab VM therefore represents a constrained demonstration environment, not production sizing. The Compose configuration applies GitLab's low-memory Puma, Sidekiq, Gitaly, and exporter recommendations. Current [GitLab installation requirements](https://docs.gitlab.com/install/requirements/) use an 8-vCPU/16-GB baseline for a normal single-node deployment; GitLab separately documents a [small-team constrained configuration](https://docs.gitlab.com/omnibus/settings/memory_constrained_envs/). Increase `gitlab_vm_size`, disk capacity, and subscription quota before production use.
+The example uses two `Standard_D2ads_v7` VMs so it can fit a small training subscription with a four-vCPU regional quota. The GitLab VM therefore represents a constrained training environment, not production sizing. The Compose configuration applies GitLab's low-memory Puma, Sidekiq, Gitaly, and exporter recommendations. Current [GitLab installation requirements](https://docs.gitlab.com/install/requirements/) use an 8-vCPU/16-GB baseline for a normal single-node deployment; GitLab separately documents a [small-team constrained configuration](https://docs.gitlab.com/omnibus/settings/memory_constrained_envs/). Increase `gitlab_vm_size`, disk capacity, and subscription quota before production use.
 
 Check availability before deployment:
 
@@ -121,6 +121,8 @@ Edit `terraform/terraform.tfvars`:
 - Replace either VM SKU if it is unavailable in your subscription.
 - Keep both access lists restricted. Terraform rejects `0.0.0.0/0`.
 
+The `cloudsphere-lab` naming in the example is for new infrastructure. Do not run `terraform apply` merely to change Azure names on an existing installation. Azure resource-group and VM names cannot be changed in place; migrate them only after verified backups, disk snapshots, state recovery, capacity checks, and a planned cutover.
+
 ### 3. Deploy
 
 ```bash
@@ -135,7 +137,7 @@ The script:
 3. Uploads and starts GitLab CE.
 4. Uploads the monitoring stack.
 5. Generates private GitLab application, health, and host-metrics targets from Terraform outputs.
-6. Starts Prometheus, Grafana, Alertmanager, exporters, demo app, and Runner.
+6. Starts Prometheus, Grafana, Alertmanager, exporters, the CloudSphere application, and Runner.
 7. Runs GitLab and monitoring health checks.
 
 GitLab's first initialization can take 10-20 minutes. Do not interrupt the deployment while the health check is waiting.
@@ -217,9 +219,9 @@ The root `.gitlab-ci.yml` provides:
 
 The manual deployment requires masked/protected CI/CD variables described in [docs/GITLAB.md](docs/GITLAB.md). It intentionally never creates or destroys Azure infrastructure automatically.
 
-## Demonstrate the monitoring lifecycle
+## Present the monitoring lifecycle
 
-Open the browser-based **CloudSphere Demo Control** through the monitoring tunnel:
+Open the browser-based **CloudSphere Operations Console** through the monitoring tunnel:
 
 ```text
 http://127.0.0.1:8000
@@ -227,12 +229,12 @@ http://127.0.0.1:8000
 
 The presentation console can:
 
-- create a custom order or three prepared demo orders;
+- create a custom order or three prepared orders;
 - restock the simulated inventory;
 - generate one controlled error or a complete 20-error alert sequence;
 - start or stop a real, container-capped 30-second CPU load test;
 - display the current orders, revenue, inventory, and error counters;
-- reset all demonstration values; and
+- reset all CloudSphere values; and
 - open Grafana, Prometheus Alerts, and Alertmanager in separate tabs.
 
 Keep CloudSphere and the **CloudSphere — Infrastructure Command Center** Grafana dashboard side by side. CloudSphere owns the presentation controls; Grafana shows the resulting Azure host, container, network, storage, target, and alert signals. The shortcut opens a live fifteen-minute view with a two-second refresh.
@@ -253,7 +255,7 @@ Open these provisioned Grafana dashboards:
 
 The Infrastructure Command Center summarizes both Azure hosts with availability, fast host CPU, memory, root-disk use, uptime, load averages, network and disk throughput, container CPU and memory, Prometheus target state, HTTP endpoint health, and pending or firing platform alerts. Controlled presentation alerts are included while passive order and inventory reminders are excluded. Its cyan, blue, violet, green, amber, and red signals follow the CloudSphere identity while preserving familiar operational severity colors.
 
-Return demonstration business values to their initial state:
+Return CloudSphere business values to their initial state:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/simulate/reset
@@ -296,7 +298,7 @@ Azure auto-shutdown stops the VMs without deleting disks. Start both VMs from Az
 ```text
 terraform/              Azure VNet, NSGs, public IPs, two VMs, and shutdown schedules
 gitlab/                 Self-managed GitLab Compose stack, secrets, health, backup, restore
-stack/                  Prometheus/Grafana stack, GitLab Runner, exporters, and demo app
+stack/                  Prometheus/Grafana stack, GitLab Runner, exporters, and CloudSphere app
 scripts/                Combined Azure deployment, validation, and safe teardown
 docs/                   Architecture, GitLab, security, tests, operations, and requirements
 .gitlab-ci.yml           Validate, test, secret-detection, and manual deployment pipeline
@@ -310,8 +312,8 @@ docs/                   Architecture, GitLab, security, tests, operations, and r
 - [Security review](docs/SECURITY.md)
 - [Requirements traceability matrix](docs/PROJECT_REQUIREMENTS_MATRIX.md)
 - [Test and acceptance plan](docs/TEST_PLAN.md)
-- [Guided implementation demonstration](docs/DEMO_GUIDE.md)
-- [CloudSphere browser controls and deployment](docs/CLOUDSPHERE_DEMO_CONTROL.md)
+- [Guided implementation presentation](docs/PRESENTATION_GUIDE.md)
+- [CloudSphere browser controls and deployment](docs/CLOUDSPHERE_CONTROL.md)
 - [Build validation summary](docs/VALIDATION_SUMMARY.md)
 
 ## Production evolution

@@ -1,6 +1,6 @@
-# CloudSphere Demo Control
+# CloudSphere Operations Console
 
-CloudSphere Demo Control replaces terminal-only order and error generation with a presentation-ready browser interface. It runs inside the existing `demo-app` container and uses the same simulation endpoints and Prometheus metrics as the original commands.
+CloudSphere Operations Console replaces terminal-only order and error generation with a presentation-ready browser interface. It runs inside the existing `cloudsphere-app` container and uses the same simulation endpoints and Prometheus metrics as the original commands.
 
 ## Presentation URL
 
@@ -21,7 +21,7 @@ The page includes direct links to:
 | Control | Result |
 |---|---|
 | **Create order** | Creates an order using the entered amount and quantity. |
-| **Generate 3 demo orders** | Creates orders for 125, 250, and 75, producing 450 total revenue and using four inventory units. |
+| **Generate 3 orders** | Creates orders for 125, 250, and 75, producing 450 total revenue and using four inventory units. |
 | **Restock +50** | Adds 50 units to the simulated inventory. |
 | **Send one test error** | Generates one intentional HTTP 500 response. |
 | **Trigger alert sequence** | Generates 20 intentional HTTP 500 responses over approximately eight seconds. |
@@ -30,15 +30,15 @@ The page includes direct links to:
 | **Stop & recover** | Stops the CPU worker early and begins the short Prometheus recovery window. |
 | **Reset all metrics** | Stops any active CPU load and resets orders, revenue, inventory, errors, alert notifications, and HTTP counters. |
 
-## Expected demonstration sequence
+## Expected presentation sequence
 
 1. Select **Reset all metrics**.
-2. Select **Generate 3 demo orders**.
-3. Select **Trigger alert sequence** and show `DemoApplicationHighErrorRate` change from `INACTIVE` to `PENDING` to `FIRING`, normally within approximately 6–10 seconds. The Grafana alert pipeline includes both pending and firing states.
+2. Select **Generate 3 orders**.
+3. Select **Trigger alert sequence** and show `CloudSphereApplicationHighErrorRate` change from `INACTIVE` to `PENDING` to `FIRING`, normally within approximately 6–10 seconds. The Grafana alert pipeline includes both pending and firing states.
 4. Select **Reset all metrics** and allow approximately 10–15 seconds for the ten-second error-rate window to clear.
 5. Open Grafana from the CloudSphere link. It forces **Last 15 minutes** and **Refresh 2s** for the presentation.
 6. Select **Run 30-second server load**.
-7. Show `monitoring-demo-app` rise in **Container CPU**, the monitoring host rise in **Peak Host CPU** and **Fleet Resource Utilization**, and `CloudSphereControlledCpuLoad` enter the alert pipeline.
+7. Show `monitoring-cloudsphere-app` rise in **Container CPU**, the monitoring host rise in **Peak Host CPU** and **Fleet Resource Utilization**, and `CloudSphereControlledCpuLoad` enter the alert pipeline.
 8. Let the test stop automatically, or select **Stop & recover**, then show the graphs and alert return to baseline.
 
 ## Deploy the update from Kali
@@ -55,7 +55,7 @@ Copy only the updated application, Prometheus configuration, alert rules, and Gr
 
 ```bash
 tar -C "$PROJECT_DIR/stack" -czf - \
-  demo-app \
+  cloudsphere-app \
   compose.yaml \
   alertmanager/alertmanager.yml \
   prometheus/prometheus.yml \
@@ -67,14 +67,14 @@ tar -C "$PROJECT_DIR/stack" -czf - \
   'tar -xzf - -C /opt/monitoring'
 ```
 
-Rebuild the demo application and reload the monitoring services:
+Rebuild the CloudSphere application and reload the monitoring services:
 
 ```bash
 ssh "$ADMIN_USER@$MONITORING_IP" '
   cd /opt/monitoring &&
-  docker compose --env-file .env up -d --build --force-recreate demo-app &&
+  docker compose --env-file .env up -d --build --force-recreate --remove-orphans cloudsphere-app &&
   docker compose --env-file .env up -d --force-recreate prometheus alertmanager grafana &&
-  docker compose --env-file .env ps demo-app prometheus alertmanager grafana
+  docker compose --env-file .env ps cloudsphere-app prometheus alertmanager grafana
 '
 ```
 
@@ -93,7 +93,7 @@ Expected results include a JSON health response containing `"status":"ok"` and a
 
 ## Safe operating notes
 
-- The HTTP 500 responses are intentional demonstration events. They do not stop the application.
+- The HTTP 500 responses are intentional presentation events. They do not stop the application.
 - Infrastructure Pulse is limited to one low-priority worker, 0.80 CPU, 192 MB of memory, 64 processes, and 30 seconds. It never writes load data to disk.
 - A ten-second cooldown prevents repeatedly stacking presentation load. **Reset all metrics** also terminates the worker.
 - Keep port `8000` bound to host loopback and access it through the existing SSH tunnel.

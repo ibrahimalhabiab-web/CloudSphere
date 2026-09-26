@@ -30,8 +30,8 @@ else
 fi
 
 if command -v python3 >/dev/null 2>&1; then
-  run_check "Demo application syntax" python3 -m py_compile "${STACK_DIR}/demo-app/app.py"
-  run_check "Demo application unit tests" python3 -m unittest discover -s "${STACK_DIR}/demo-app" -p 'test_*.py'
+  run_check "CloudSphere application syntax" python3 -m py_compile "${STACK_DIR}/cloudsphere-app/app.py"
+  run_check "CloudSphere application unit tests" python3 -m unittest discover -s "${STACK_DIR}/cloudsphere-app" -p 'test_*.py'
   run_check "Grafana dashboard JSON" python3 -m json.tool "${STACK_DIR}/grafana/dashboards/operations-overview.json"
   if [[ -f "${STACK_DIR}/grafana/dashboards/gitlab-platform.json" ]]; then
     run_check "GitLab dashboard JSON" python3 -m json.tool "${STACK_DIR}/grafana/dashboards/gitlab-platform.json"

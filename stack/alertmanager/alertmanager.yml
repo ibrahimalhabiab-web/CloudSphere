@@ -13,7 +13,7 @@ route:
 receivers:
   - name: operations-webhook
     webhook_configs:
-      - url: http://demo-app:8000/alerts
+      - url: http://cloudsphere-app:8000/alerts
         send_resolved: true
         max_alerts: 20
 

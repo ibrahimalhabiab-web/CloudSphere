@@ -1,6 +1,6 @@
 # Validation Summary
 
-Validation date: 26 August 2026
+Validation date: 26 September 2026
 
 ## Passed in the build workspace
 
@@ -9,8 +9,8 @@ Validation date: 26 August 2026
 | Terraform formatting | PASS | All active Terraform files with Terraform 1.15.8 |
 | Terraform initialization and validation | PASS | Isolated provider-backed validation with AzureRM 4.81.0 |
 | Provider integrity | PASS | Windows AzureRM 4.81.0 archive matched HashiCorp's published SHA-256 value |
-| Demo application syntax | PASS | Python byte-code compilation |
-| Demo application unit tests | PASS | Three tests covering metric escaping, required business metrics, and reset behavior |
+| CloudSphere application syntax | PASS | Python byte-code compilation |
+| CloudSphere application unit tests | PASS | Twelve tests covering the API, frontend controls, metrics, business actions, reset behavior, and controlled CPU load |
 | ShellCheck 0.10 and Bash syntax | PASS | All 13 Bash deployment, lifecycle, health, Runner, backup, and restore scripts |
 | YAML parsing | PASS | 15 CI, Compose, cloud-init, Prometheus, Alertmanager, Blackbox, and provisioning files; duplicate keys rejected |
 | JSON parsing | PASS | Both Grafana dashboard definitions |
@@ -40,4 +40,4 @@ The following checks require the user's Azure subscription, trusted network, liv
 - Prometheus GitLab, GitLab host, Runner, health, application, host, container, and blackbox targets reporting `UP`.
 - Live Grafana dashboards, firing/resolved alerts, backup checksum verification, guarded restore rehearsal, and persistence after restart.
 
-Run `scripts/validate.sh`, then follow `docs/TEST_PLAN.md` and `docs/DEMO_GUIDE.md` on the authorized environment. Capture non-sensitive screenshots and redact passwords, tokens, SSH keys, subscription identifiers, and public IP addresses.
+Run `scripts/validate.sh`, then follow `docs/TEST_PLAN.md` and `docs/PRESENTATION_GUIDE.md` on the authorized environment. Capture non-sensitive screenshots and redact passwords, tokens, SSH keys, subscription identifiers, and public IP addresses.

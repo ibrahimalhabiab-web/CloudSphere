@@ -1,4 +1,4 @@
-# Guided Demonstration
+# Guided Presentation
 
 ## Before the audience arrives
 
@@ -6,8 +6,8 @@
 2. Run GitLab and monitoring health checks.
 3. Confirm the Runner is online.
 4. Confirm the latest `main` pipeline passed.
-5. Open CloudSphere Demo Control at `http://127.0.0.1:8000`, GitLab, Prometheus Alerts, both Grafana dashboards, and Alertmanager through approved access paths.
-6. Select **Reset all metrics** in CloudSphere Demo Control.
+5. Open CloudSphere Operations Console at `http://127.0.0.1:8000`, GitLab, Prometheus Alerts, both Grafana dashboards, and Alertmanager through approved access paths.
+6. Select **Reset all metrics** in CloudSphere Operations Console.
 7. Use a browser window that does not expose passwords, tokens, public IPs, or unrelated accounts.
 
 ## Presentation sequence
@@ -20,19 +20,19 @@
 6. **Show CD:** explain the protected manual deployment job and why infrastructure apply remains operator approved.
 7. **Show runtime:** display Compose `ps` on both VMs.
 8. **Show targets:** display GitLab, GitLab health, Runner, host, container, and application Prometheus jobs.
-9. **Show dashboards:** place CloudSphere Demo Control and the CloudSphere Infrastructure Command Center side by side, then briefly open GitLab Platform Health.
-10. **Generate business activity:** select **Generate 3 demo orders** and show the order, revenue, and inventory counters in CloudSphere while Grafana remains focused on server and container health.
-11. **Show application alerting:** select **Trigger alert sequence** and show `DemoApplicationHighErrorRate` progress from `INACTIVE` to `PENDING` to `FIRING` in Prometheus and Grafana.
-12. **Show infrastructure pressure:** open Grafana from the CloudSphere shortcut, select **Run 30-second server load**, and show the demo container CPU, host CPU, load average, and `CloudSphereControlledCpuLoad` alert react.
+9. **Show dashboards:** place CloudSphere Operations Console and the CloudSphere Infrastructure Command Center side by side, then briefly open GitLab Platform Health.
+10. **Generate business activity:** select **Generate 3 orders** and show the order, revenue, and inventory counters in CloudSphere while Grafana remains focused on server and container health.
+11. **Show application alerting:** select **Trigger alert sequence** and show `CloudSphereApplicationHighErrorRate` progress from `INACTIVE` to `PENDING` to `FIRING` in Prometheus and Grafana.
+12. **Show infrastructure pressure:** open Grafana from the CloudSphere shortcut, select **Run 30-second server load**, and show the CloudSphere container CPU, host CPU, load average, and `CloudSphereControlledCpuLoad` alert react.
 13. **Recover:** let the CPU test stop automatically or select **Stop & recover**, then select **Reset all metrics** and allow the short rate windows to clear.
 14. **Close:** explain backups, security controls, production gaps, and safe teardown.
 
-## Browser controls used during the demonstration
+## Browser controls used during the presentation
 
 | Action | CloudSphere control | Expected result |
 |---|---|---|
 | Start clean | **Reset all metrics** | Orders 0, revenue 0, inventory 100, errors 0 |
-| Generate activity | **Generate 3 demo orders** | Orders 3, revenue 450, inventory 96 |
+| Generate activity | **Generate 3 orders** | Orders 3, revenue 450, inventory 96 |
 | Test a single failure | **Send one test error** | Error counter increases by one |
 | Trigger the app alert | **Trigger alert sequence** | 20 HTTP 500 responses over about eight seconds; alert appears pending, then firing |
 | Trigger infrastructure pressure | **Run 30-second server load** | Real capped CPU activity appears in cAdvisor, Prometheus, and Grafana |

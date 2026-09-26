@@ -21,7 +21,7 @@ services:
       - node-exporter
       - cadvisor
       - blackbox-exporter
-      - demo-app
+      - cloudsphere-app
     networks:
       - monitoring
     restart: unless-stopped
@@ -132,10 +132,10 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  demo-app:
+  cloudsphere-app:
     build:
-      context: ./demo-app
-    container_name: monitoring-demo-app
+      context: ./cloudsphere-app
+    container_name: monitoring-cloudsphere-app
     cpus: "0.80"
     mem_limit: 192m
     pids_limit: 64

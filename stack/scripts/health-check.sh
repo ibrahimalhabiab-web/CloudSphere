@@ -9,8 +9,8 @@ checks=(
   "Prometheus|http://127.0.0.1:9090/-/ready"
   "Alertmanager|http://127.0.0.1:9093/-/ready"
   "Grafana|http://127.0.0.1:3000/api/health"
-  "Demo application|http://127.0.0.1:8000/health"
-  "Demo metrics|http://127.0.0.1:8000/metrics"
+  "CloudSphere application|http://127.0.0.1:8000/health"
+  "CloudSphere metrics|http://127.0.0.1:8000/metrics"
   "GitLab Runner metrics|http://127.0.0.1:9252/metrics"
 )
 

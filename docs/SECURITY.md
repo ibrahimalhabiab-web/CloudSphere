@@ -18,7 +18,7 @@
 | GitLab credentials | Initial root password is generated on the GitLab host with restrictive permissions and ignored by Git. |
 | GitLab metrics | Monitoring allowlist permits only loopback and the private Azure VNet. Bundled Prometheus is disabled, and the separate GitLab host exporter has no public NSG rule. |
 | Grafana | Anonymous access and public signup are disabled; the admin password is generated as a Compose secret. |
-| Monitoring interfaces | Prometheus, Alertmanager, and the demo application bind to host loopback. Exporters remain on the Docker network. |
+| Monitoring interfaces | Prometheus, Alertmanager, and the CloudSphere application bind to host loopback. Exporters remain on the Docker network. |
 | CI Runner | Runner is deployed away from the GitLab application. Registration tokens and deployment keys are not stored in the repository. |
 | CI deployment | Deployment is manual, limited to the default branch, and uses protected CI/CD variables plus a pre-verified SSH known-hosts entry. Terraform apply/destroy are not automated. |
 | Secret scanning | GitLab's maintained secret-detection template is included in the pipeline. |
@@ -28,7 +28,7 @@
 
 ## Important residual risks
 
-1. **Training HTTP endpoints:** GitLab and Grafana use restricted HTTP for a simple demonstration. Add DNS, trusted TLS certificates, secure redirects, and secure cookies before production.
+1. **Training HTTP endpoints:** GitLab and Grafana use restricted HTTP for the presentation environment. Add DNS, trusted TLS certificates, secure redirects, and secure cookies before production.
 2. **Constrained GitLab sizing:** The example GitLab VM is smaller than the current normal single-node baseline. Slow response, initialization delay, or resource exhaustion is possible.
 3. **Single-node services:** Each VM is a failure domain. There is no GitLab, Prometheus, Grafana, or Alertmanager high availability.
 4. **Docker socket:** Runner requires access to the Docker socket to create Docker executor jobs. Compromise of a CI job or Runner can lead to host-level control. Use dedicated ephemeral Runner hosts and tightly governed projects in production.

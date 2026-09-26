@@ -1,6 +1,6 @@
 # Copy this file to terraform.tfvars and update the values before deployment.
-project_name        = "observability"
-environment         = "demo"
+project_name        = "cloudsphere"
+environment         = "lab"
 location            = "uaenorth"
 admin_username      = "azureadmin"
 ssh_public_key_path = "~/.ssh/id_ed25519.pub"

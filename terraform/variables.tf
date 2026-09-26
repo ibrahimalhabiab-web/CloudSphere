@@ -1,7 +1,7 @@
 variable "project_name" {
   description = "Short lowercase name used in Azure resource names."
   type        = string
-  default     = "observability"
+  default     = "cloudsphere"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9-]{2,18}$", var.project_name))
@@ -12,11 +12,11 @@ variable "project_name" {
 variable "environment" {
   description = "Deployment environment label."
   type        = string
-  default     = "demo"
+  default     = "lab"
 
   validation {
-    condition     = contains(["demo", "dev", "test", "prod"], var.environment)
-    error_message = "environment must be one of: demo, dev, test, prod."
+    condition     = contains(["lab", "dev", "test", "prod"], var.environment)
+    error_message = "environment must be one of: lab, dev, test, prod."
   }
 }
 
@@ -107,7 +107,7 @@ variable "expose_prometheus" {
 }
 
 variable "auto_shutdown_enabled" {
-  description = "Enable a daily VM shutdown schedule to control demonstration cost."
+  description = "Enable a daily VM shutdown schedule to control lab cost."
   type        = bool
   default     = true
 }

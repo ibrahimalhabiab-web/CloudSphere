@@ -34,7 +34,7 @@ output "grafana_url" {
 }
 
 output "gitlab_url" {
-  description = "Restricted HTTP URL for the self-managed GitLab demonstration. Add DNS and TLS before production."
+  description = "Restricted HTTP URL for the self-managed GitLab service. Add DNS and TLS before production."
   value       = "http://${azurerm_public_ip.gitlab.ip_address}"
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dependency-free CloudSphere demonstration service and control console."""
+"""Dependency-free CloudSphere service and operations console."""
 
 from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -59,7 +59,7 @@ DASHBOARD_HTML = r"""<!doctype html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#091426">
-  <title>CloudSphere Demo Control</title>
+  <title>CloudSphere Operations Console</title>
   <style>
     :root {
       color-scheme: dark;
@@ -636,7 +636,6 @@ DASHBOARD_HTML = r"""<!doctype html>
         </div>
         <div>
           <div class="brand-name">CloudSphere</div>
-          <div class="brand-subtitle">Demo control</div>
         </div>
       </div>
       <div id="connection" class="connection" role="status" aria-live="polite">
@@ -702,7 +701,7 @@ DASHBOARD_HTML = r"""<!doctype html>
             </div>
             <div class="button-row">
               <button id="create-order" class="button button-primary" type="submit">Create order</button>
-              <button id="demo-orders" class="button button-secondary" type="button">Generate 3 demo orders</button>
+              <button id="three-orders" class="button button-secondary" type="button">Generate 3 orders</button>
               <button id="restock" class="button button-secondary" type="button">Restock +50</button>
             </div>
           </form>
@@ -717,7 +716,7 @@ DASHBOARD_HTML = r"""<!doctype html>
 
           <div class="divider"></div>
           <div class="section-label">Presentation reset</div>
-          <p class="panel-copy">Return the demo counters to their starting values and stop any active load test.</p>
+          <p class="panel-copy">Return the CloudSphere counters to their starting values and stop any active load test.</p>
           <div class="button-row">
             <button id="reset-all" class="button button-reset" type="button">Reset all metrics</button>
           </div>
@@ -775,7 +774,7 @@ DASHBOARD_HTML = r"""<!doctype html>
 
           <div class="divider"></div>
           <div class="section-label">What to show your audience</div>
-          <p class="panel-copy">Keep this console and the live 15-minute Grafana view side by side. The error drill demonstrates application alerting; Infrastructure Pulse demonstrates real container and host CPU pressure. Reset to stop every drill and show recovery.</p>
+          <p class="panel-copy">Keep this console and the live 15-minute Grafana view side by side. The error drill shows application alerting; Infrastructure Pulse shows real container and host CPU pressure. Reset to stop every drill and show recovery.</p>
         </div>
       </article>
 
@@ -789,7 +788,7 @@ DASHBOARD_HTML = r"""<!doctype html>
         </header>
         <div class="panel-body">
           <div id="activity-log" class="log-list" aria-live="polite">
-            <div class="log-item"><span class="log-time">--:--:--</span><span class="log-kind">system</span><span class="log-message">Waiting for the demo service.</span></div>
+            <div class="log-item"><span class="log-time">--:--:--</span><span class="log-kind">system</span><span class="log-message">Waiting for the CloudSphere service.</span></div>
           </div>
         </div>
       </article>
@@ -853,7 +852,7 @@ DASHBOARD_HTML = r"""<!doctype html>
 
     function setConnection(online) {
       byId("connection").classList.toggle("online", online);
-      byId("connection-text").textContent = online ? "Demo service connected" : "Service connection lost";
+      byId("connection-text").textContent = online ? "Service connected" : "Service connection lost";
     }
 
     function updateState(payload) {
@@ -998,16 +997,16 @@ DASHBOARD_HTML = r"""<!doctype html>
       });
     });
 
-    byId("demo-orders").addEventListener("click", async () => {
-      const button = byId("demo-orders");
+    byId("three-orders").addEventListener("click", async () => {
+      const button = byId("three-orders");
       button.disabled = true;
       try {
         for (const order of [{amount: 125, quantity: 1}, {amount: 250, quantity: 2}, {amount: 75, quantity: 1}]) {
           await createOrder(order.amount, order.quantity, false);
           await pause(400);
         }
-        addActivity("success", "Three demo orders created: $450 revenue and four inventory units used.");
-        showToast("Three demo orders created.");
+        addActivity("success", "Three orders created: $450 revenue and four inventory units used.");
+        showToast("Three orders created.");
       } catch (error) {
         addActivity("error", error.message);
         showToast(error.message, true);
@@ -1037,8 +1036,8 @@ DASHBOARD_HTML = r"""<!doctype html>
         const payload = await readJson(response);
         if (!response.ok) throw new Error(payload.error || "Reset failed");
         updateProgress(0, 20, "Ready to start");
-        addActivity("success", "All demonstration counters reset to their starting values.");
-        showToast("CloudSphere demonstration reset.");
+        addActivity("success", "All CloudSphere counters reset to their starting values.");
+        showToast("CloudSphere reset complete.");
         await refreshState();
       } catch (error) {
         addActivity("error", error.message);
@@ -1060,7 +1059,7 @@ DASHBOARD_HTML = r"""<!doctype html>
         const response = await fetch("/simulate/load/start", {
           method: "POST",
           cache: "no-store",
-          headers: {"X-CloudSphere-Demo": "1"},
+          headers: {"X-CloudSphere-Control": "1"},
         });
         const payload = await readJson(response);
         if (!response.ok) throw new Error(payload.error || `Load test failed (${response.status})`);
@@ -1081,7 +1080,7 @@ DASHBOARD_HTML = r"""<!doctype html>
         const response = await fetch("/simulate/load/stop", {
           method: "POST",
           cache: "no-store",
-          headers: {"X-CloudSphere-Demo": "1"},
+          headers: {"X-CloudSphere-Control": "1"},
         });
         const payload = await readJson(response);
         if (!response.ok) throw new Error(payload.error || `Stop failed (${response.status})`);
@@ -1252,8 +1251,8 @@ def stop_controlled_cpu_load(start_cooldown=True):
     return payload
 
 
-def reset_demo_state():
-    """Return the in-memory demonstration counters to their initial values."""
+def reset_cloudsphere_state():
+    """Return the in-memory CloudSphere counters to their initial values."""
     stop_controlled_cpu_load(start_cooldown=False)
     with LOCK:
         STATE.clear()
@@ -1303,8 +1302,8 @@ def state_snapshot():
     return {
         "state": state,
         "service": {
-            "name": "CloudSphere Demo Control",
-            "version": "2.2.0",
+            "name": "CloudSphere Operations Console",
+            "version": "2.3.0",
             "uptime_seconds": round(time.time() - START_TIME, 3),
         },
         "stress": stress,
@@ -1323,47 +1322,47 @@ def render_metrics():
         requests = dict(REQUESTS)
 
     lines = [
-        "# HELP demo_app_info Static information about the demonstration application.",
-        "# TYPE demo_app_info gauge",
-        'demo_app_info{service="order-demo",version="2.2.0"} 1',
-        "# HELP demo_app_uptime_seconds Seconds since the application started.",
-        "# TYPE demo_app_uptime_seconds gauge",
-        f"demo_app_uptime_seconds {time.time() - START_TIME:.3f}",
-        "# HELP demo_orders_total Total simulated orders accepted.",
-        "# TYPE demo_orders_total counter",
-        f"demo_orders_total {snapshot['orders_total']}",
-        "# HELP demo_revenue_total Total simulated order revenue.",
-        "# TYPE demo_revenue_total counter",
-        f"demo_revenue_total {snapshot['revenue_total']:.2f}",
-        "# HELP demo_inventory_level Current simulated inventory units.",
-        "# TYPE demo_inventory_level gauge",
-        f"demo_inventory_level {snapshot['inventory_level']}",
-        "# HELP demo_application_errors_total Total simulated application errors.",
-        "# TYPE demo_application_errors_total counter",
-        f"demo_application_errors_total {snapshot['application_errors_total']}",
-        "# HELP demo_alert_notifications_total Alerts delivered to the demonstration webhook.",
-        "# TYPE demo_alert_notifications_total counter",
-        f"demo_alert_notifications_total {snapshot['alert_notifications_total']}",
-        "# HELP cloudsphere_demo_cpu_stress_active Whether the controlled CPU presentation load is active.",
-        "# TYPE cloudsphere_demo_cpu_stress_active gauge",
-        f"cloudsphere_demo_cpu_stress_active {snapshot['cpu_stress_active']}",
-        "# HELP cloudsphere_demo_cpu_stress_remaining_seconds Seconds remaining in the controlled CPU load.",
-        "# TYPE cloudsphere_demo_cpu_stress_remaining_seconds gauge",
-        f"cloudsphere_demo_cpu_stress_remaining_seconds {max(0, math.ceil(snapshot['cpu_stress_ends_at'] - time.time())) if snapshot['cpu_stress_active'] else 0}",
-        "# HELP cloudsphere_demo_cpu_stress_runs_total Controlled CPU presentation loads started.",
-        "# TYPE cloudsphere_demo_cpu_stress_runs_total counter",
-        f"cloudsphere_demo_cpu_stress_runs_total {snapshot['cpu_stress_runs_total']}",
-        "# HELP demo_http_requests_total HTTP requests processed by path and status.",
-        "# TYPE demo_http_requests_total counter",
+        "# HELP cloudsphere_app_info Static information about the CloudSphere application.",
+        "# TYPE cloudsphere_app_info gauge",
+        'cloudsphere_app_info{service="cloudsphere-orders",version="2.3.0"} 1',
+        "# HELP cloudsphere_app_uptime_seconds Seconds since the application started.",
+        "# TYPE cloudsphere_app_uptime_seconds gauge",
+        f"cloudsphere_app_uptime_seconds {time.time() - START_TIME:.3f}",
+        "# HELP cloudsphere_orders_total Total simulated orders accepted.",
+        "# TYPE cloudsphere_orders_total counter",
+        f"cloudsphere_orders_total {snapshot['orders_total']}",
+        "# HELP cloudsphere_revenue_total Total simulated order revenue.",
+        "# TYPE cloudsphere_revenue_total counter",
+        f"cloudsphere_revenue_total {snapshot['revenue_total']:.2f}",
+        "# HELP cloudsphere_inventory_level Current simulated inventory units.",
+        "# TYPE cloudsphere_inventory_level gauge",
+        f"cloudsphere_inventory_level {snapshot['inventory_level']}",
+        "# HELP cloudsphere_application_errors_total Total simulated application errors.",
+        "# TYPE cloudsphere_application_errors_total counter",
+        f"cloudsphere_application_errors_total {snapshot['application_errors_total']}",
+        "# HELP cloudsphere_alert_notifications_total Alerts delivered to the CloudSphere webhook.",
+        "# TYPE cloudsphere_alert_notifications_total counter",
+        f"cloudsphere_alert_notifications_total {snapshot['alert_notifications_total']}",
+        "# HELP cloudsphere_cpu_stress_active Whether the controlled CPU presentation load is active.",
+        "# TYPE cloudsphere_cpu_stress_active gauge",
+        f"cloudsphere_cpu_stress_active {snapshot['cpu_stress_active']}",
+        "# HELP cloudsphere_cpu_stress_remaining_seconds Seconds remaining in the controlled CPU load.",
+        "# TYPE cloudsphere_cpu_stress_remaining_seconds gauge",
+        f"cloudsphere_cpu_stress_remaining_seconds {max(0, math.ceil(snapshot['cpu_stress_ends_at'] - time.time())) if snapshot['cpu_stress_active'] else 0}",
+        "# HELP cloudsphere_cpu_stress_runs_total Controlled CPU presentation loads started.",
+        "# TYPE cloudsphere_cpu_stress_runs_total counter",
+        f"cloudsphere_cpu_stress_runs_total {snapshot['cpu_stress_runs_total']}",
+        "# HELP cloudsphere_http_requests_total HTTP requests processed by path and status.",
+        "# TYPE cloudsphere_http_requests_total counter",
     ]
     for (method, path, status), value in sorted(requests.items()):
         labels = f'method="{metric_label(method)}",path="{metric_label(path)}",status="{metric_label(status)}"'
-        lines.append(f"demo_http_requests_total{{{labels}}} {value}")
+        lines.append(f"cloudsphere_http_requests_total{{{labels}}} {value}")
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "CloudSphereDemo/2.2"
+    server_version = "CloudSphere/2.3"
 
     def log_message(self, fmt, *args):
         print(json.dumps({"time": time.time(), "client": self.client_address[0], "message": fmt % args}), flush=True)
@@ -1453,12 +1452,12 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
 
         if path == "/simulate/reset":
-            self.send_payload(200, {"reset": True, "state": reset_demo_state()})
+            self.send_payload(200, {"reset": True, "state": reset_cloudsphere_state()})
             return
 
         if path in ("/simulate/load/start", "/simulate/load/stop"):
-            if self.headers.get("X-CloudSphere-Demo") != "1":
-                self.send_payload(403, {"accepted": False, "error": "Missing demonstration request header."})
+            if self.headers.get("X-CloudSphere-Control") != "1":
+                self.send_payload(403, {"accepted": False, "error": "Missing CloudSphere control request header."})
                 return
             if path == "/simulate/load/stop":
                 self.send_payload(200, {"stopped": True, "stress": stop_controlled_cpu_load()})
