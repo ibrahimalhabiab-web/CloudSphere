@@ -43,10 +43,10 @@ The page includes direct links to:
 
 ## Deploy the update from Kali
 
-The following commands assume the complete updated project is located at `$HOME/Downloads/Cloud_Project`.
+The following commands assume the complete updated project is located at `$HOME/Downloads/CloudSphere_GitLab`.
 
 ```bash
-export PROJECT_DIR="$HOME/Downloads/Cloud_Project"
+export PROJECT_DIR="$HOME/Downloads/CloudSphere_GitLab"
 export ADMIN_USER="$(terraform -chdir="$PROJECT_DIR/terraform" output -raw admin_username)"
 export MONITORING_IP="$(terraform -chdir="$PROJECT_DIR/terraform" output -raw public_ip_address)"
 ```
