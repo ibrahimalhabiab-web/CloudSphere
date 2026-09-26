@@ -20,8 +20,8 @@
 6. **Show CD:** explain the protected manual deployment job and why infrastructure apply remains operator approved.
 7. **Show runtime:** display Compose `ps` on both VMs.
 8. **Show targets:** display GitLab, GitLab health, Runner, host, container, and application Prometheus jobs.
-9. **Show dashboards:** place CloudSphere Demo Control and Operations Overview side by side, then briefly open GitLab Platform Health.
-10. **Generate business activity:** select **Generate 3 demo orders** and point out the synchronized order, revenue, and inventory changes.
+9. **Show dashboards:** place CloudSphere Demo Control and the CloudSphere Infrastructure Command Center side by side, then briefly open GitLab Platform Health.
+10. **Generate business activity:** select **Generate 3 demo orders** and show the order, revenue, and inventory counters in CloudSphere while Grafana remains focused on server and container health.
 11. **Show alerting:** select **Trigger alert sequence**, open Prometheus Alerts, and show `DemoApplicationHighErrorRate` progress from `INACTIVE` to `PENDING` to `FIRING`.
 12. **Recover:** select **Reset all metrics**, allow the thirty-second rate window to clear, and show the alert returning to `INACTIVE`.
 13. **Clear the no-orders condition if needed:** create one Standard order after reset.

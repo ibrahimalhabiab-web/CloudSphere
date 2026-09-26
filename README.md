@@ -234,7 +234,7 @@ The presentation console can:
 - reset all demonstration values; and
 - open Grafana, Prometheus Alerts, and Alertmanager in separate tabs.
 
-Keep CloudSphere and the **Internal Monitoring - Operations Overview** Grafana dashboard side by side. In presentation mode, Prometheus scrapes and evaluates the demo metrics every two seconds, and the Grafana dashboard refreshes every two seconds.
+Keep CloudSphere and the **CloudSphere — Infrastructure Command Center** Grafana dashboard side by side. CloudSphere owns the order, revenue, inventory, and controlled-error presentation; Grafana stays focused on Azure host, container, network, storage, target, and alert health. The dashboard refreshes every two seconds.
 
 The original HTTP endpoints remain available as an operator fallback on the monitoring VM:
 
@@ -247,8 +247,10 @@ curl -i "http://127.0.0.1:8000/simulate/error"
 
 Open these provisioned Grafana dashboards:
 
-- **Internal Monitoring - Operations Overview**
+- **CloudSphere — Infrastructure Command Center**
 - **Internal GitLab - Platform Health**
+
+The Infrastructure Command Center summarizes both Azure hosts with availability, peak CPU, memory, root-disk use, uptime, load averages, network and disk throughput, container CPU and memory, Prometheus target state, HTTP endpoint health, and active non-demo infrastructure alerts. Its cyan, blue, violet, green, amber, and red signals follow the CloudSphere identity while preserving familiar operational severity colors.
 
 Return demonstration business values to their initial state:
 
