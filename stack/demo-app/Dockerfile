@@ -3,6 +3,7 @@ FROM python:3.13-alpine
 RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
 COPY --chown=app:app app.py /app/app.py
+COPY --chown=app:app assets /app/assets
 
 USER app
 EXPOSE 8000
