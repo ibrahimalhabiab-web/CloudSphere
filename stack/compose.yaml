@@ -136,6 +136,9 @@ services:
     build:
       context: ./demo-app
     container_name: monitoring-demo-app
+    cpus: "0.80"
+    mem_limit: 192m
+    pids_limit: 64
     ports:
       - 127.0.0.1:8000:8000
     expose:

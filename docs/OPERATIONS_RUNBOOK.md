@@ -140,7 +140,7 @@ Use the browser-based CloudSphere Demo Control for a presentation:
 http://127.0.0.1:8000
 ```
 
-Select **Generate 3 demo orders** for business activity, **Trigger alert sequence** for the controlled high-error demonstration, and **Reset all metrics** for recovery. The page polls its own current state and links directly to Grafana, Prometheus Alerts, and Alertmanager through the local SSH tunnels.
+Select **Generate 3 demo orders** for business activity, **Trigger alert sequence** for the controlled high-error demonstration, **Run 30-second server load** for bounded CPU pressure, and **Reset all metrics** for recovery. The page polls its own current state and opens Grafana with a fifteen-minute range and two-second refresh.
 
 If the browser controls are unavailable, use these operator fallback endpoints:
 
@@ -148,6 +148,8 @@ If the browser controls are unavailable, use these operator fallback endpoints:
 curl "http://127.0.0.1:8000/simulate/order?amount=125.50&quantity=2"
 curl "http://127.0.0.1:8000/simulate/restock?quantity=50"
 curl -i "http://127.0.0.1:8000/simulate/error"
+curl -X POST -H "X-CloudSphere-Demo: 1" http://127.0.0.1:8000/simulate/load/start
+curl -X POST -H "X-CloudSphere-Demo: 1" http://127.0.0.1:8000/simulate/load/stop
 ```
 
 Reset the in-memory demonstration values:
@@ -156,7 +158,7 @@ Reset the in-memory demonstration values:
 curl -X POST http://127.0.0.1:8000/simulate/reset
 ```
 
-Wait for one or two two-second Prometheus scrape intervals and refresh Grafana. The high-error recording rule uses a thirty-second rate window, so the alert may take roughly 30–45 seconds to return to `INACTIVE` after reset. Historical graphs still show earlier samples; use a short time range to focus on the new state.
+Wait for one or two two-second Prometheus scrape intervals and one Grafana refresh. The high-error rule uses a ten-second rate window, so allow approximately 10–15 seconds after reset for it to return to `INACTIVE`. Historical samples remain visible; use the CloudSphere Grafana shortcut to stay on the live fifteen-minute view.
 
 ## 9. Monitoring backup
 

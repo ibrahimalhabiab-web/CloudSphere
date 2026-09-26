@@ -4,7 +4,10 @@
 from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import math
 import os
+import subprocess
+import sys
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -12,12 +15,36 @@ from urllib.parse import parse_qs, urlparse
 
 START_TIME = time.time()
 LOCK = threading.Lock()
+STRESS_DURATION_SECONDS = 30
+STRESS_COOLDOWN_SECONDS = 10
+STRESS_PROCESS = None
+STRESS_GENERATION = 0
+CPU_STRESS_WORKER = r"""
+import os
+import sys
+import time
+
+try:
+    os.nice(10)
+except (AttributeError, OSError):
+    pass
+
+deadline = time.monotonic() + float(sys.argv[1])
+value = 1
+while time.monotonic() < deadline:
+    value = (value * 1664525 + 1013904223) & 0xFFFFFFFF
+"""
 INITIAL_STATE = {
     "orders_total": 0,
     "revenue_total": 0.0,
     "inventory_level": 100,
     "application_errors_total": 0,
     "alert_notifications_total": 0,
+    "cpu_stress_active": 0,
+    "cpu_stress_runs_total": 0,
+    "cpu_stress_started_at": 0.0,
+    "cpu_stress_ends_at": 0.0,
+    "cpu_stress_cooldown_until": 0.0,
 }
 STATE = dict(INITIAL_STATE)
 REQUESTS = defaultdict(int)
@@ -406,6 +433,12 @@ DASHBOARD_HTML = r"""<!doctype html>
       box-shadow: 0 10px 24px rgba(225, 29, 72, 0.18);
     }
 
+    .button-load {
+      background: linear-gradient(135deg, var(--cyan), var(--violet));
+      color: #061326;
+      box-shadow: 0 10px 24px rgba(91, 140, 255, 0.2);
+    }
+
     .button-reset {
       border-color: rgba(251, 191, 36, 0.28);
       background: rgba(120, 76, 12, 0.23);
@@ -443,6 +476,35 @@ DASHBOARD_HTML = r"""<!doctype html>
     .alert-title { font-weight: 760; }
     .alert-time { color: #fda4af; font-size: 0.76rem; }
     .alert-card p { margin: 7px 0 0; color: #aebbd0; font-size: 0.82rem; }
+
+    .stress-card {
+      border-color: rgba(43, 195, 232, 0.24);
+      background: linear-gradient(135deg, rgba(21, 94, 117, 0.2), rgba(57, 72, 166, 0.18));
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .stress-card.active {
+      border-color: rgba(255, 122, 144, 0.5);
+      box-shadow: inset 0 0 28px rgba(255, 122, 144, 0.08), 0 0 28px rgba(91, 140, 255, 0.12);
+    }
+
+    .stress-card .alert-time { color: var(--cyan-light); }
+    .stress-card.active .alert-time { color: #fda4af; }
+
+    .stress-progress {
+      background: linear-gradient(90deg, var(--cyan), var(--violet), var(--red));
+    }
+
+    .safety-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.74rem;
+    }
+
+    .safety-note strong { color: var(--green); white-space: nowrap; }
 
     .progress-shell {
       overflow: hidden;
@@ -655,7 +717,7 @@ DASHBOARD_HTML = r"""<!doctype html>
 
           <div class="divider"></div>
           <div class="section-label">Presentation reset</div>
-          <p class="panel-copy">Return orders, revenue, inventory, and errors to their starting values.</p>
+          <p class="panel-copy">Return the demo counters to their starting values and stop any active load test.</p>
           <div class="button-row">
             <button id="reset-all" class="button button-reset" type="button">Reset all metrics</button>
           </div>
@@ -666,7 +728,7 @@ DASHBOARD_HTML = r"""<!doctype html>
         <header class="panel-header">
           <div>
             <h2 class="panel-title">Reliability test</h2>
-            <p class="panel-copy">Generate controlled errors and demonstrate alert detection.</p>
+            <p class="panel-copy">Generate controlled application errors or a safe infrastructure CPU pulse.</p>
           </div>
           <span class="step-badge">Step 2</span>
         </header>
@@ -674,9 +736,9 @@ DASHBOARD_HTML = r"""<!doctype html>
           <div class="alert-card">
             <div class="alert-head">
               <span class="alert-title">High-error alert sequence</span>
-              <span class="alert-time">~20 seconds</span>
+              <span class="alert-time">~8 seconds</span>
             </div>
-            <p>Sends 20 intentional HTTP 500 responses, one every second. The application remains healthy while Prometheus observes the rising error ratio.</p>
+            <p>Sends 20 intentional HTTP 500 responses over eight seconds. Prometheus and Grafana show the alert moving from pending to firing while the application stays healthy.</p>
             <div class="progress-shell" aria-hidden="true"><div id="error-progress" class="progress"></div></div>
             <div class="progress-meta"><span id="error-progress-text">Ready to start</span><span id="error-progress-count">0 / 20</span></div>
           </div>
@@ -694,8 +756,26 @@ DASHBOARD_HTML = r"""<!doctype html>
           </div>
 
           <div class="divider"></div>
+          <div class="section-label">Infrastructure pulse</div>
+          <div id="stress-card" class="alert-card stress-card">
+            <div class="alert-head">
+              <span class="alert-title">Controlled server-load test</span>
+              <span id="stress-state" class="alert-time">READY</span>
+            </div>
+            <p>Runs one low-priority CPU worker for 30 seconds. Watch Peak Host CPU, Container CPU, Server Load, and Active Platform Alerts react in real time.</p>
+            <div class="progress-shell" aria-hidden="true"><div id="stress-progress" class="progress stress-progress"></div></div>
+            <div class="progress-meta"><span id="stress-progress-text">Ready to start</span><span id="stress-progress-count">0 / 30s</span></div>
+            <div class="safety-note"><strong>SAFE MODE</strong><span>CPU only, container-capped, one run at a time, and automatic recovery. No disk, memory, GitLab, or stored data is modified.</span></div>
+          </div>
+
+          <div class="button-row">
+            <button id="start-stress" class="button button-load" type="button">Run 30-second server load</button>
+            <button id="stop-stress" class="button button-secondary" type="button" disabled>Stop &amp; recover</button>
+          </div>
+
+          <div class="divider"></div>
           <div class="section-label">What to show your audience</div>
-          <p class="panel-copy">Keep this console and Grafana side by side. After the error sequence starts, open Prometheus Alerts to show the state transition, then reset the metrics to demonstrate recovery.</p>
+          <p class="panel-copy">Keep this console and the live 15-minute Grafana view side by side. The error drill demonstrates application alerting; Infrastructure Pulse demonstrates real container and host CPU pressure. Reset to stop every drill and show recovery.</p>
         </div>
       </article>
 
@@ -729,11 +809,12 @@ DASHBOARD_HTML = r"""<!doctype html>
     let toastTimer;
     let burstRunning = false;
     let burstCancelled = false;
+    let stressActive = false;
 
     function configureLinks() {
       const host = window.location.hostname || "127.0.0.1";
       const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-      byId("grafana-link").href = `${protocol}//${host}:3000`;
+      byId("grafana-link").href = `${protocol}//${host}:3000/d/internal-ops-overview/cloudsphere-infrastructure-command-center?orgId=1&from=now-15m&to=now&timezone=browser&refresh=2s`;
       byId("prometheus-link").href = `${protocol}//${host}:9090/alerts`;
       byId("alertmanager-link").href = `${protocol}//${host}:9093`;
     }
@@ -783,6 +864,32 @@ DASHBOARD_HTML = r"""<!doctype html>
       byId("errors-value").textContent = state.application_errors_total.toLocaleString();
       byId("request-count").textContent = `${payload.http.requests_total.toLocaleString()} HTTP events`;
       byId("uptime").textContent = `Service uptime: ${formatDuration(payload.service.uptime_seconds)}`;
+      updateStressState(payload.stress || {});
+    }
+
+    function updateStressState(stress) {
+      const duration = Number(stress.duration_seconds || 30);
+      const remaining = Math.max(0, Number(stress.remaining_seconds || 0));
+      const cooldown = Math.max(0, Number(stress.cooldown_remaining_seconds || 0));
+      const elapsed = stress.active ? Math.max(0, duration - remaining) : 0;
+      stressActive = Boolean(stress.active);
+
+      byId("stress-card").classList.toggle("active", stressActive);
+      byId("stress-progress").style.width = `${stressActive ? Math.min(100, (elapsed / duration) * 100) : 0}%`;
+      byId("stress-progress-count").textContent = stressActive ? `${Math.ceil(elapsed)} / ${duration}s` : `0 / ${duration}s`;
+      byId("start-stress").disabled = stressActive || cooldown > 0;
+      byId("stop-stress").disabled = !stressActive;
+
+      if (stressActive) {
+        byId("stress-state").textContent = remaining > 22 ? "RAMPING" : "ACTIVE";
+        byId("stress-progress-text").textContent = `${Math.ceil(remaining)} seconds until automatic recovery`;
+      } else if (cooldown > 0) {
+        byId("stress-state").textContent = "RECOVERING";
+        byId("stress-progress-text").textContent = `Metrics cooling down · retry in ${Math.ceil(cooldown)}s`;
+      } else {
+        byId("stress-state").textContent = "READY";
+        byId("stress-progress-text").textContent = "Ready to start";
+      }
     }
 
     async function readJson(response) {
@@ -843,13 +950,13 @@ DASHBOARD_HTML = r"""<!doctype html>
       byId("single-error").disabled = true;
       byId("stop-errors").disabled = false;
       updateProgress(0, total, "Starting controlled failure");
-      addActivity("system", "High-error alert sequence started: 20 errors at one-second intervals.");
+      addActivity("system", "High-error alert sequence started: 20 errors at 400-millisecond intervals.");
 
       try {
         for (let current = 1; current <= total && !burstCancelled; current += 1) {
           await sendError(false);
           updateProgress(current, total, current === total ? "Sequence complete" : "Generating controlled errors");
-          if (current < total && !burstCancelled) await pause(1000);
+          if (current < total && !burstCancelled) await pause(400);
         }
         if (burstCancelled) {
           addActivity("system", "Error sequence stopped by the presenter.");
@@ -946,10 +1053,57 @@ DASHBOARD_HTML = r"""<!doctype html>
     });
     byId("stop-errors").addEventListener("click", () => { burstCancelled = true; });
 
+    byId("start-stress").addEventListener("click", async () => {
+      const button = byId("start-stress");
+      button.disabled = true;
+      try {
+        const response = await fetch("/simulate/load/start", {
+          method: "POST",
+          cache: "no-store",
+          headers: {"X-CloudSphere-Demo": "1"},
+        });
+        const payload = await readJson(response);
+        if (!response.ok) throw new Error(payload.error || `Load test failed (${response.status})`);
+        addActivity("system", "Infrastructure Pulse started: capped CPU load for 30 seconds.");
+        showToast("Server load started. Open the live Grafana dashboard.");
+        await refreshState();
+      } catch (error) {
+        addActivity("error", error.message);
+        showToast(error.message, true);
+        await refreshState();
+      }
+    });
+
+    byId("stop-stress").addEventListener("click", async () => {
+      const button = byId("stop-stress");
+      button.disabled = true;
+      try {
+        const response = await fetch("/simulate/load/stop", {
+          method: "POST",
+          cache: "no-store",
+          headers: {"X-CloudSphere-Demo": "1"},
+        });
+        const payload = await readJson(response);
+        if (!response.ok) throw new Error(payload.error || `Stop failed (${response.status})`);
+        addActivity("success", "Infrastructure Pulse stopped. Prometheus is clearing its short rate window.");
+        showToast("Load stopped. Grafana will return to baseline shortly.");
+        await refreshState();
+      } catch (error) {
+        addActivity("error", error.message);
+        showToast(error.message, true);
+        await refreshState();
+      }
+    });
+
+    async function scheduleStateRefresh() {
+      await refreshState(true);
+      window.setTimeout(scheduleStateRefresh, stressActive ? 750 : 2000);
+    }
+
     configureLinks();
     addActivity("system", "CloudSphere presentation console opened.");
     refreshState(false);
-    setInterval(() => refreshState(true), 2000);
+    window.setTimeout(scheduleStateRefresh, 1000);
   </script>
 </body>
 </html>
@@ -964,8 +1118,143 @@ def metric_label(value):
     return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
+class StressAlreadyRunningError(RuntimeError):
+    """Raised when a second controlled CPU load is requested."""
+
+
+class StressCooldownError(RuntimeError):
+    """Raised when a new controlled CPU load is requested during recovery."""
+
+
+def _stress_payload_locked(now=None):
+    """Build the UI-safe controlled-load state while LOCK is held."""
+    now = time.time() if now is None else now
+    active = bool(STATE["cpu_stress_active"])
+    remaining = max(0, math.ceil(STATE["cpu_stress_ends_at"] - now)) if active else 0
+    cooldown = max(0, math.ceil(STATE["cpu_stress_cooldown_until"] - now)) if not active else 0
+    return {
+        "active": active,
+        "duration_seconds": STRESS_DURATION_SECONDS,
+        "remaining_seconds": remaining,
+        "cooldown_remaining_seconds": cooldown,
+        "workers": 1 if active else 0,
+        "runs_total": STATE["cpu_stress_runs_total"],
+        "auto_stop": True,
+    }
+
+
+def _clear_stress_locked(start_cooldown=True):
+    """Clear controlled-load state while LOCK is held."""
+    STATE["cpu_stress_active"] = 0
+    STATE["cpu_stress_started_at"] = 0.0
+    STATE["cpu_stress_ends_at"] = 0.0
+    STATE["cpu_stress_cooldown_until"] = (
+        time.time() + STRESS_COOLDOWN_SECONDS if start_cooldown else 0.0
+    )
+
+
+def _launch_cpu_stress_worker():
+    """Start one fixed, low-priority CPU worker without invoking a shell."""
+    return subprocess.Popen(
+        [sys.executable, "-c", CPU_STRESS_WORKER, str(STRESS_DURATION_SECONDS)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        start_new_session=True,
+    )
+
+
+def _terminate_process(process):
+    """Stop and reap a controlled worker, escalating only if it does not exit."""
+    if process is None or process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2)
+
+
+def _watch_cpu_stress(generation, process):
+    """Reap a naturally completed worker and move the drill into recovery."""
+    global STRESS_PROCESS
+    process.wait()
+    with LOCK:
+        if generation == STRESS_GENERATION and STRESS_PROCESS is process:
+            STRESS_PROCESS = None
+            _clear_stress_locked(start_cooldown=True)
+
+
+def _start_cpu_stress_watcher(generation, process):
+    threading.Thread(
+        target=_watch_cpu_stress,
+        args=(generation, process),
+        name="cloudsphere-cpu-stress-watcher",
+        daemon=True,
+    ).start()
+
+
+def start_controlled_cpu_load():
+    """Start the bounded presentation CPU pulse and return its server state."""
+    global STRESS_GENERATION, STRESS_PROCESS
+    now = time.time()
+    with LOCK:
+        if STATE["cpu_stress_active"]:
+            raise StressAlreadyRunningError("A controlled server-load test is already running.")
+        cooldown = math.ceil(STATE["cpu_stress_cooldown_until"] - now)
+        if cooldown > 0:
+            raise StressCooldownError(f"Recovery is still in progress. Try again in {cooldown} seconds.")
+        STRESS_GENERATION += 1
+        generation = STRESS_GENERATION
+        STATE["cpu_stress_active"] = 1
+        STATE["cpu_stress_runs_total"] += 1
+        STATE["cpu_stress_started_at"] = now
+        STATE["cpu_stress_ends_at"] = now + STRESS_DURATION_SECONDS
+        STATE["cpu_stress_cooldown_until"] = 0.0
+
+    try:
+        process = _launch_cpu_stress_worker()
+    except OSError as exc:
+        with LOCK:
+            if generation == STRESS_GENERATION:
+                _clear_stress_locked(start_cooldown=False)
+        raise RuntimeError("The controlled CPU worker could not be started.") from exc
+
+    with LOCK:
+        if generation != STRESS_GENERATION or not STATE["cpu_stress_active"]:
+            cancelled = True
+        else:
+            STRESS_PROCESS = process
+            cancelled = False
+            payload = _stress_payload_locked()
+
+    if cancelled:
+        _terminate_process(process)
+        raise RuntimeError("The controlled server-load test was cancelled before it started.")
+
+    _start_cpu_stress_watcher(generation, process)
+    return payload
+
+
+def stop_controlled_cpu_load(start_cooldown=True):
+    """Stop the controlled CPU pulse. The operation is safe to repeat."""
+    global STRESS_GENERATION, STRESS_PROCESS
+    with LOCK:
+        was_active = bool(STATE["cpu_stress_active"])
+        STRESS_GENERATION += 1
+        process = STRESS_PROCESS
+        STRESS_PROCESS = None
+        _clear_stress_locked(start_cooldown=start_cooldown and was_active)
+        payload = _stress_payload_locked()
+    _terminate_process(process)
+    return payload
+
+
 def reset_demo_state():
     """Return the in-memory demonstration counters to their initial values."""
+    stop_controlled_cpu_load(start_cooldown=False)
     with LOCK:
         STATE.clear()
         STATE.update(INITIAL_STATE)
@@ -1010,13 +1299,15 @@ def state_snapshot():
     with LOCK:
         state = dict(STATE)
         requests = dict(REQUESTS)
+        stress = _stress_payload_locked()
     return {
         "state": state,
         "service": {
             "name": "CloudSphere Demo Control",
-            "version": "2.1.0",
+            "version": "2.2.0",
             "uptime_seconds": round(time.time() - START_TIME, 3),
         },
+        "stress": stress,
         "http": {
             "requests_total": sum(requests.values()),
             "errors_5xx_total": sum(
@@ -1034,7 +1325,7 @@ def render_metrics():
     lines = [
         "# HELP demo_app_info Static information about the demonstration application.",
         "# TYPE demo_app_info gauge",
-        'demo_app_info{service="order-demo",version="2.1.0"} 1',
+        'demo_app_info{service="order-demo",version="2.2.0"} 1',
         "# HELP demo_app_uptime_seconds Seconds since the application started.",
         "# TYPE demo_app_uptime_seconds gauge",
         f"demo_app_uptime_seconds {time.time() - START_TIME:.3f}",
@@ -1053,6 +1344,15 @@ def render_metrics():
         "# HELP demo_alert_notifications_total Alerts delivered to the demonstration webhook.",
         "# TYPE demo_alert_notifications_total counter",
         f"demo_alert_notifications_total {snapshot['alert_notifications_total']}",
+        "# HELP cloudsphere_demo_cpu_stress_active Whether the controlled CPU presentation load is active.",
+        "# TYPE cloudsphere_demo_cpu_stress_active gauge",
+        f"cloudsphere_demo_cpu_stress_active {snapshot['cpu_stress_active']}",
+        "# HELP cloudsphere_demo_cpu_stress_remaining_seconds Seconds remaining in the controlled CPU load.",
+        "# TYPE cloudsphere_demo_cpu_stress_remaining_seconds gauge",
+        f"cloudsphere_demo_cpu_stress_remaining_seconds {max(0, math.ceil(snapshot['cpu_stress_ends_at'] - time.time())) if snapshot['cpu_stress_active'] else 0}",
+        "# HELP cloudsphere_demo_cpu_stress_runs_total Controlled CPU presentation loads started.",
+        "# TYPE cloudsphere_demo_cpu_stress_runs_total counter",
+        f"cloudsphere_demo_cpu_stress_runs_total {snapshot['cpu_stress_runs_total']}",
         "# HELP demo_http_requests_total HTTP requests processed by path and status.",
         "# TYPE demo_http_requests_total counter",
     ]
@@ -1063,7 +1363,7 @@ def render_metrics():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "CloudSphereDemo/2.1"
+    server_version = "CloudSphereDemo/2.2"
 
     def log_message(self, fmt, *args):
         print(json.dumps({"time": time.time(), "client": self.client_address[0], "message": fmt % args}), flush=True)
@@ -1154,6 +1454,24 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/simulate/reset":
             self.send_payload(200, {"reset": True, "state": reset_demo_state()})
+            return
+
+        if path in ("/simulate/load/start", "/simulate/load/stop"):
+            if self.headers.get("X-CloudSphere-Demo") != "1":
+                self.send_payload(403, {"accepted": False, "error": "Missing demonstration request header."})
+                return
+            if path == "/simulate/load/stop":
+                self.send_payload(200, {"stopped": True, "stress": stop_controlled_cpu_load()})
+                return
+            try:
+                stress = start_controlled_cpu_load()
+                self.send_payload(202, {"accepted": True, "stress": stress})
+            except StressAlreadyRunningError as exc:
+                self.send_payload(409, {"accepted": False, "error": str(exc)})
+            except StressCooldownError as exc:
+                self.send_payload(429, {"accepted": False, "error": str(exc)})
+            except RuntimeError as exc:
+                self.send_payload(503, {"accepted": False, "error": str(exc)})
             return
 
         if path != "/alerts":

@@ -5,6 +5,9 @@ groups:
       - record: instance:node_cpu_utilisation:ratio
         expr: 1 - avg without (cpu, mode) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
 
+      - record: instance:node_cpu_utilisation:ratio15s
+        expr: 1 - avg without (cpu, mode) (irate(node_cpu_seconds_total{mode="idle"}[15s]))
+
       - record: instance:node_memory_utilisation:ratio
         expr: 1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
 
@@ -13,6 +16,9 @@ groups:
 
       - record: demo:http_error_ratio:rate30s
         expr: sum(rate(demo_http_requests_total{status=~"5.."}[30s])) / clamp_min(sum(rate(demo_http_requests_total[30s])), 0.001)
+
+      - record: demo:http_error_ratio:rate10s
+        expr: sum(rate(demo_http_requests_total{status=~"5.."}[10s])) / clamp_min(sum(rate(demo_http_requests_total[10s])), 0.001)
 
       - record: demo:orders:rate5m
         expr: rate(demo_orders_total[5m])

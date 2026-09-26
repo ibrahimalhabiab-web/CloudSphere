@@ -24,20 +24,22 @@ The page includes direct links to:
 | **Generate 3 demo orders** | Creates orders for 125, 250, and 75, producing 450 total revenue and using four inventory units. |
 | **Restock +50** | Adds 50 units to the simulated inventory. |
 | **Send one test error** | Generates one intentional HTTP 500 response. |
-| **Trigger alert sequence** | Generates 20 intentional HTTP 500 responses at one-second intervals. |
+| **Trigger alert sequence** | Generates 20 intentional HTTP 500 responses over approximately eight seconds. |
 | **Stop** | Stops the active error sequence after the current request. |
-| **Reset all metrics** | Resets orders, revenue, inventory, errors, alert notifications, and HTTP counters. |
+| **Run 30-second server load** | Starts one low-priority, container-capped CPU worker so cAdvisor, Prometheus, Grafana, and the alert pipeline observe a real infrastructure change. |
+| **Stop & recover** | Stops the CPU worker early and begins the short Prometheus recovery window. |
+| **Reset all metrics** | Stops any active CPU load and resets orders, revenue, inventory, errors, alert notifications, and HTTP counters. |
 
 ## Expected demonstration sequence
 
 1. Select **Reset all metrics**.
 2. Select **Generate 3 demo orders**.
-3. Show Grafana changing to orders `3`, revenue `450`, and inventory `96` after approximately 2–4 seconds.
-4. Select **Trigger alert sequence**.
-5. Open Prometheus Alerts and show `DemoApplicationHighErrorRate` change from `INACTIVE` to `PENDING` to `FIRING`, normally within approximately 12–18 seconds.
-6. Select **Reset all metrics**.
-7. Wait approximately 30–45 seconds for the thirty-second error-rate window to clear.
-8. Create one Standard order if `DemoNoRecentOrders` is active after the reset.
+3. Select **Trigger alert sequence** and show `DemoApplicationHighErrorRate` change from `INACTIVE` to `PENDING` to `FIRING`, normally within approximately 6–10 seconds. The Grafana alert pipeline includes both pending and firing states.
+4. Select **Reset all metrics** and allow approximately 10–15 seconds for the ten-second error-rate window to clear.
+5. Open Grafana from the CloudSphere link. It forces **Last 15 minutes** and **Refresh 2s** for the presentation.
+6. Select **Run 30-second server load**.
+7. Show `monitoring-demo-app` rise in **Container CPU**, the monitoring host rise in **Peak Host CPU** and **Fleet Resource Utilization**, and `CloudSphereControlledCpuLoad` enter the alert pipeline.
+8. Let the test stop automatically, or select **Stop & recover**, then show the graphs and alert return to baseline.
 
 ## Deploy the update from Kali
 
@@ -59,6 +61,7 @@ tar -C "$PROJECT_DIR/stack" -czf - \
   prometheus/prometheus.yml \
   prometheus/rules/recording.yml \
   prometheus/rules/alerts.yml \
+  grafana/provisioning/datasources/prometheus.yml \
   grafana/dashboards/operations-overview.json \
 | ssh "$ADMIN_USER@$MONITORING_IP" \
   'tar -xzf - -C /opt/monitoring'
@@ -69,7 +72,7 @@ Rebuild the demo application and reload the monitoring services:
 ```bash
 ssh "$ADMIN_USER@$MONITORING_IP" '
   cd /opt/monitoring &&
-  docker compose --env-file .env up -d --build demo-app &&
+  docker compose --env-file .env up -d --build --force-recreate demo-app &&
   docker compose --env-file .env up -d --force-recreate prometheus alertmanager grafana &&
   docker compose --env-file .env ps demo-app prometheus alertmanager grafana
 '
@@ -91,6 +94,8 @@ Expected results include a JSON health response containing `"status":"ok"` and a
 ## Safe operating notes
 
 - The HTTP 500 responses are intentional demonstration events. They do not stop the application.
+- Infrastructure Pulse is limited to one low-priority worker, 0.80 CPU, 192 MB of memory, 64 processes, and 30 seconds. It never writes load data to disk.
+- A ten-second cooldown prevents repeatedly stacking presentation load. **Reset all metrics** also terminates the worker.
 - Keep port `8000` bound to host loopback and access it through the existing SSH tunnel.
 - Do not use `docker compose down -v`; it can remove persistent volumes.
 - Resetting clears the current counters but does not erase historical Prometheus samples already stored on disk.

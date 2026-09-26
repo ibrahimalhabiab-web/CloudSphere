@@ -55,14 +55,14 @@
         "wideLayout": true
       },
       "targets": [
-        {"editorMode": "code", "expr": "100 * avg(up{job=~\"node|gitlab-node\"})", "legendFormat": "Servers", "range": true, "refId": "A"}
+        {"editorMode": "code", "expr": "100 * avg(up{job=~\"node|gitlab-node\"})", "instant": true, "legendFormat": "Servers", "range": false, "refId": "A"}
       ],
       "title": "Server Availability",
       "type": "stat"
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "description": "Number of currently firing non-demo infrastructure alerts.",
+      "description": "Pending or firing platform alerts, including the controlled presentation drills.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -77,8 +77,8 @@
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
       "id": 5,
       "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "sum(ALERTS{alertstate=\"firing\",alertname!~\"Demo.*\"}) or vector(0)", "legendFormat": "Alerts", "range": true, "refId": "A"}],
-      "title": "Active Infra Alerts",
+      "targets": [{"editorMode": "code", "expr": "sum(ALERTS{alertstate=~\"pending|firing\",alertname!~\"DemoInventoryLow|DemoNoRecentOrders\"}) or vector(0)", "instant": true, "legendFormat": "Alerts", "range": false, "refId": "A"}],
+      "title": "Active Platform Alerts",
       "type": "stat"
     },
     {
@@ -98,7 +98,7 @@
       "gridPos": {"h": 5, "w": 4, "x": 8, "y": 0},
       "id": 2,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_cpu_utilisation:ratio{job=~\"node|gitlab-node\"})", "legendFormat": "Peak CPU", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_cpu_utilisation:ratio15s{job=~\"node|gitlab-node\"})", "instant": true, "legendFormat": "Peak CPU", "range": false, "refId": "A"}],
       "title": "Peak Host CPU",
       "type": "stat"
     },
@@ -119,7 +119,7 @@
       "gridPos": {"h": 5, "w": 4, "x": 12, "y": 0},
       "id": 3,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_memory_utilisation:ratio{job=~\"node|gitlab-node\"})", "legendFormat": "Peak Memory", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_memory_utilisation:ratio{job=~\"node|gitlab-node\"})", "instant": true, "legendFormat": "Peak Memory", "range": false, "refId": "A"}],
       "title": "Peak Host Memory",
       "type": "stat"
     },
@@ -140,7 +140,7 @@
       "gridPos": {"h": 5, "w": 4, "x": 16, "y": 0},
       "id": 4,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_filesystem_utilisation:ratio{job=~\"node|gitlab-node\",mountpoint=\"/\"})", "legendFormat": "Peak Root Disk", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "100 * max(instance:node_filesystem_utilisation:ratio{job=~\"node|gitlab-node\",mountpoint=\"/\"})", "instant": true, "legendFormat": "Peak Root Disk", "range": false, "refId": "A"}],
       "title": "Peak Root Disk",
       "type": "stat"
     },
@@ -159,7 +159,7 @@
       "gridPos": {"h": 5, "w": 4, "x": 20, "y": 0},
       "id": 6,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "min(time() - node_boot_time_seconds{job=~\"node|gitlab-node\"})", "legendFormat": "Youngest Host", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "min(time() - node_boot_time_seconds{job=~\"node|gitlab-node\"})", "instant": true, "legendFormat": "Youngest Host", "range": false, "refId": "A"}],
       "title": "Youngest Host Uptime",
       "type": "stat"
     },
@@ -184,7 +184,7 @@
       "id": 8,
       "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
       "targets": [
-        {"editorMode": "code", "expr": "100 * instance:node_cpu_utilisation:ratio{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · CPU", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "100 * instance:node_cpu_utilisation:ratio15s{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · CPU", "range": true, "refId": "A"},
         {"editorMode": "code", "expr": "100 * instance:node_memory_utilisation:ratio{job=~\"node|gitlab-node\"}", "legendFormat": "{{role}} · Memory", "range": true, "refId": "B"},
         {"editorMode": "code", "expr": "100 * instance:node_filesystem_utilisation:ratio{job=~\"node|gitlab-node\",mountpoint=\"/\"}", "legendFormat": "{{role}} · Root disk", "range": true, "refId": "C"}
       ],
@@ -235,8 +235,8 @@
       "id": 7,
       "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
       "targets": [
-        {"editorMode": "code", "expr": "sum by (role) (rate(node_network_receive_bytes_total{job=~\"node|gitlab-node\",device!~\"^(lo|veth.*|docker.*|br-.*)$\"}[2m]))", "legendFormat": "{{role}} · Receive", "range": true, "refId": "A"},
-        {"editorMode": "code", "expr": "sum by (role) (rate(node_network_transmit_bytes_total{job=~\"node|gitlab-node\",device!~\"^(lo|veth.*|docker.*|br-.*)$\"}[2m]))", "legendFormat": "{{role}} · Transmit", "range": true, "refId": "B"}
+        {"editorMode": "code", "expr": "sum by (role) (irate(node_network_receive_bytes_total{job=~\"node|gitlab-node\",device!~\"^(lo|veth.*|docker.*|br-.*)$\"}[15s]))", "legendFormat": "{{role}} · Receive", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "sum by (role) (irate(node_network_transmit_bytes_total{job=~\"node|gitlab-node\",device!~\"^(lo|veth.*|docker.*|br-.*)$\"}[15s]))", "legendFormat": "{{role}} · Transmit", "range": true, "refId": "B"}
       ],
       "title": "Network Throughput",
       "type": "timeseries"
@@ -259,8 +259,8 @@
       "id": 14,
       "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
       "targets": [
-        {"editorMode": "code", "expr": "sum by (role) (rate(node_disk_read_bytes_total{job=~\"node|gitlab-node\",device=~\"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$\"}[2m]))", "legendFormat": "{{role}} · Read", "range": true, "refId": "A"},
-        {"editorMode": "code", "expr": "sum by (role) (rate(node_disk_written_bytes_total{job=~\"node|gitlab-node\",device=~\"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$\"}[2m]))", "legendFormat": "{{role}} · Write", "range": true, "refId": "B"}
+        {"editorMode": "code", "expr": "sum by (role) (irate(node_disk_read_bytes_total{job=~\"node|gitlab-node\",device=~\"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$\"}[15s]))", "legendFormat": "{{role}} · Read", "range": true, "refId": "A"},
+        {"editorMode": "code", "expr": "sum by (role) (irate(node_disk_written_bytes_total{job=~\"node|gitlab-node\",device=~\"^(sd[a-z]+|vd[a-z]+|xvd[a-z]+|nvme[0-9]+n[0-9]+)$\"}[15s]))", "legendFormat": "{{role}} · Write", "range": true, "refId": "B"}
       ],
       "title": "Disk I/O Throughput",
       "type": "timeseries"
@@ -279,7 +279,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
       "id": 9,
       "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"hideZeros": false, "mode": "multi", "sort": "desc"}},
-      "targets": [{"editorMode": "code", "expr": "topk(8, sum by (name) (rate(container_cpu_usage_seconds_total{name=~\"monitoring-.+\"}[5m])))", "legendFormat": "{{name}}", "range": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "topk(8, sum by (name) (irate(container_cpu_usage_seconds_total{name=~\"monitoring-.+\"}[15s])))", "legendFormat": "{{name}}", "range": true, "refId": "A"}],
       "title": "Container CPU · Top 8",
       "type": "timeseries"
     },
@@ -341,7 +341,7 @@
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "description": "Non-demo infrastructure alerts currently firing. An empty table means no active infrastructure incident.",
+      "description": "Pending and firing platform alerts. Controlled presentation alerts are included; passive order and inventory reminders are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -353,9 +353,9 @@
       "gridPos": {"h": 7, "w": 24, "x": 0, "y": 36},
       "id": 12,
       "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
-      "targets": [{"editorMode": "code", "expr": "ALERTS{alertstate=\"firing\",alertname!~\"Demo.*\"}", "format": "table", "instant": true, "refId": "A"}],
-      "title": "Active Infrastructure Alerts",
-      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "alertstate": true, "job": true}, "renameByName": {"Value": "State", "alertname": "Alert", "instance": "Instance", "severity": "Severity"}}}],
+      "targets": [{"editorMode": "code", "expr": "ALERTS{alertstate=~\"pending|firing\",alertname!~\"DemoInventoryLow|DemoNoRecentOrders\"}", "format": "table", "instant": true, "refId": "A"}],
+      "title": "Platform Alert Pipeline",
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "job": true}, "indexByName": {"alertstate": 0, "alertname": 1, "severity": 2, "instance": 3}, "renameByName": {"alertstate": "State", "alertname": "Alert", "instance": "Instance", "severity": "Severity"}}}],
       "type": "table"
     }
   ],
@@ -364,11 +364,11 @@
   "schemaVersion": 41,
   "tags": ["cloudsphere", "infrastructure", "azure", "prometheus", "observability"],
   "templating": {"list": []},
-  "time": {"from": "now-1h", "to": "now"},
+  "time": {"from": "now-15m", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
   "title": "CloudSphere — Infrastructure Command Center",
   "uid": "internal-ops-overview",
-  "version": 2,
+  "version": 3,
   "weekStart": "saturday"
 }
