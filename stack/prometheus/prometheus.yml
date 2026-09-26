@@ -23,6 +23,8 @@ scrape_configs:
           - prometheus:9090
 
   - job_name: node
+    scrape_interval: 2s
+    scrape_timeout: 1s
     static_configs:
       - targets:
           - node-exporter:9100
@@ -30,6 +32,8 @@ scrape_configs:
           role: monitoring-host
 
   - job_name: containers
+    scrape_interval: 2s
+    scrape_timeout: 1s
     static_configs:
       - targets:
           - cadvisor:8080

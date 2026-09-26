@@ -113,17 +113,29 @@ groups:
           description: "Container {{ $labels.name }} has consumed more than 0.8 CPU cores for ten minutes."
           runbook: "docs/OPERATIONS_RUNBOOK.md#7-host-or-container-pressure"
 
+      - alert: CloudSphereControlledCpuLoad
+        expr: (sum(rate(container_cpu_usage_seconds_total{name=~".*demo-app.*"}[10s])) > 0.45) and on() (max(cloudsphere_demo_cpu_stress_active) == 1)
+        for: 4s
+        labels:
+          severity: warning
+          team: operations
+          presentation: "true"
+        annotations:
+          summary: "Controlled CloudSphere CPU load is active"
+          description: "The bounded presentation workload is producing measurable CPU pressure in the demo container."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
+
   - name: business-service
     rules:
       - alert: DemoApplicationHighErrorRate
-        expr: demo:http_error_ratio:rate30s > 0.05
-        for: 10s
+        expr: demo:http_error_ratio:rate10s > 0.05
+        for: 4s
         labels:
           severity: critical
           team: application
         annotations:
           summary: "Application error ratio exceeds 5%"
-          description: "The demonstration application's thirty-second HTTP error ratio is {{ $value | humanizePercentage }}."
+          description: "The demonstration application's ten-second HTTP error ratio is {{ $value | humanizePercentage }}."
           runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
 
       - alert: DemoInventoryLow

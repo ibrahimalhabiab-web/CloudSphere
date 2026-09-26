@@ -14,4 +14,4 @@ datasources:
     editable: false
     jsonData:
       httpMethod: POST
-      timeInterval: 15s
+      timeInterval: 2s

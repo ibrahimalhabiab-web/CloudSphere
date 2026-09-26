@@ -5,9 +5,34 @@ import json
 from http.server import ThreadingHTTPServer
 import threading
 import unittest
+from unittest import mock
+import urllib.error
 import urllib.request
 
 import app
+
+
+class FakeProcess:
+    def __init__(self):
+        self.returncode = None
+        self.terminated = False
+        self.killed = False
+
+    def poll(self):
+        return self.returncode
+
+    def terminate(self):
+        self.terminated = True
+        self.returncode = -15
+
+    def kill(self):
+        self.killed = True
+        self.returncode = -9
+
+    def wait(self, timeout=None):
+        if self.returncode is None and timeout is not None:
+            raise TimeoutError
+        return self.returncode or 0
 
 
 class DemoApplicationTests(unittest.TestCase):
@@ -36,6 +61,9 @@ class DemoApplicationTests(unittest.TestCase):
             "demo_revenue_total",
             "demo_inventory_level",
             "demo_application_errors_total",
+            "cloudsphere_demo_cpu_stress_active",
+            "cloudsphere_demo_cpu_stress_remaining_seconds",
+            "cloudsphere_demo_cpu_stress_runs_total",
         ):
             self.assertIn(metric, metrics)
 
@@ -67,10 +95,41 @@ class DemoApplicationTests(unittest.TestCase):
             "Generate 3 demo orders",
             "Trigger alert sequence",
             "Reset all metrics",
+            "Infrastructure pulse",
+            "Run 30-second server load",
+            "/simulate/load/start",
             "/simulate/error",
             "/api/state",
         ):
             self.assertIn(expected, page)
+
+    def test_controlled_cpu_load_is_single_run_and_stoppable(self):
+        process = FakeProcess()
+        with (
+            mock.patch.object(app, "_launch_cpu_stress_worker", return_value=process),
+            mock.patch.object(app, "_start_cpu_stress_watcher"),
+        ):
+            stress = app.start_controlled_cpu_load()
+            self.assertTrue(stress["active"])
+            self.assertEqual(stress["duration_seconds"], 30)
+            self.assertEqual(stress["workers"], 1)
+            with self.assertRaises(app.StressAlreadyRunningError):
+                app.start_controlled_cpu_load()
+
+            stopped = app.stop_controlled_cpu_load()
+            self.assertFalse(stopped["active"])
+            self.assertTrue(process.terminated)
+
+    def test_reset_stops_an_active_cpu_load(self):
+        process = FakeProcess()
+        with (
+            mock.patch.object(app, "_launch_cpu_stress_worker", return_value=process),
+            mock.patch.object(app, "_start_cpu_stress_watcher"),
+        ):
+            app.start_controlled_cpu_load()
+            snapshot = app.reset_demo_state()
+        self.assertTrue(process.terminated)
+        self.assertEqual(snapshot, app.INITIAL_STATE)
 
 
 class DemoApplicationHTTPTests(unittest.TestCase):
@@ -102,7 +161,15 @@ class DemoApplicationHTTPTests(unittest.TestCase):
             payload = json.load(response)
             self.assertEqual(response.status, 200)
             self.assertEqual(payload["state"]["inventory_level"], 100)
-            self.assertEqual(payload["service"]["version"], "2.1.0")
+            self.assertEqual(payload["service"]["version"], "2.2.0")
+            self.assertFalse(payload["stress"]["active"])
+            self.assertEqual(payload["stress"]["duration_seconds"], 30)
+
+    def test_load_endpoint_requires_demo_header(self):
+        request = urllib.request.Request(f"{self.base_url}/simulate/load/start", method="POST")
+        with self.assertRaises(urllib.error.HTTPError) as raised:
+            urllib.request.urlopen(request, timeout=2)
+        self.assertEqual(raised.exception.code, 403)
 
     def test_brand_avatar_is_served_as_png(self):
         with urllib.request.urlopen(f"{self.base_url}{app.BRAND_AVATAR_URL}", timeout=2) as response:

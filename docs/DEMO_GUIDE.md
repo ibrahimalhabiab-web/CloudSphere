@@ -22,9 +22,9 @@
 8. **Show targets:** display GitLab, GitLab health, Runner, host, container, and application Prometheus jobs.
 9. **Show dashboards:** place CloudSphere Demo Control and the CloudSphere Infrastructure Command Center side by side, then briefly open GitLab Platform Health.
 10. **Generate business activity:** select **Generate 3 demo orders** and show the order, revenue, and inventory counters in CloudSphere while Grafana remains focused on server and container health.
-11. **Show alerting:** select **Trigger alert sequence**, open Prometheus Alerts, and show `DemoApplicationHighErrorRate` progress from `INACTIVE` to `PENDING` to `FIRING`.
-12. **Recover:** select **Reset all metrics**, allow the thirty-second rate window to clear, and show the alert returning to `INACTIVE`.
-13. **Clear the no-orders condition if needed:** create one Standard order after reset.
+11. **Show application alerting:** select **Trigger alert sequence** and show `DemoApplicationHighErrorRate` progress from `INACTIVE` to `PENDING` to `FIRING` in Prometheus and Grafana.
+12. **Show infrastructure pressure:** open Grafana from the CloudSphere shortcut, select **Run 30-second server load**, and show the demo container CPU, host CPU, load average, and `CloudSphereControlledCpuLoad` alert react.
+13. **Recover:** let the CPU test stop automatically or select **Stop & recover**, then select **Reset all metrics** and allow the short rate windows to clear.
 14. **Close:** explain backups, security controls, production gaps, and safe teardown.
 
 ## Browser controls used during the demonstration
@@ -34,8 +34,9 @@
 | Start clean | **Reset all metrics** | Orders 0, revenue 0, inventory 100, errors 0 |
 | Generate activity | **Generate 3 demo orders** | Orders 3, revenue 450, inventory 96 |
 | Test a single failure | **Send one test error** | Error counter increases by one |
-| Trigger the alert | **Trigger alert sequence** | 20 HTTP 500 responses over about 20 seconds |
-| Recover | **Reset all metrics** | Current counters return to their starting values |
+| Trigger the app alert | **Trigger alert sequence** | 20 HTTP 500 responses over about eight seconds; alert appears pending, then firing |
+| Trigger infrastructure pressure | **Run 30-second server load** | Real capped CPU activity appears in cAdvisor, Prometheus, and Grafana |
+| Recover | **Stop & recover** or **Reset all metrics** | CPU load stops; short rate windows drain back to baseline |
 
 The following commands are retained only as a troubleshooting fallback:
 

@@ -230,11 +230,12 @@ The presentation console can:
 - create a custom order or three prepared demo orders;
 - restock the simulated inventory;
 - generate one controlled error or a complete 20-error alert sequence;
+- start or stop a real, container-capped 30-second CPU load test;
 - display the current orders, revenue, inventory, and error counters;
 - reset all demonstration values; and
 - open Grafana, Prometheus Alerts, and Alertmanager in separate tabs.
 
-Keep CloudSphere and the **CloudSphere — Infrastructure Command Center** Grafana dashboard side by side. CloudSphere owns the order, revenue, inventory, and controlled-error presentation; Grafana stays focused on Azure host, container, network, storage, target, and alert health. The dashboard refreshes every two seconds.
+Keep CloudSphere and the **CloudSphere — Infrastructure Command Center** Grafana dashboard side by side. CloudSphere owns the presentation controls; Grafana shows the resulting Azure host, container, network, storage, target, and alert signals. The shortcut opens a live fifteen-minute view with a two-second refresh.
 
 The original HTTP endpoints remain available as an operator fallback on the monitoring VM:
 
@@ -250,7 +251,7 @@ Open these provisioned Grafana dashboards:
 - **CloudSphere — Infrastructure Command Center**
 - **Internal GitLab - Platform Health**
 
-The Infrastructure Command Center summarizes both Azure hosts with availability, peak CPU, memory, root-disk use, uptime, load averages, network and disk throughput, container CPU and memory, Prometheus target state, HTTP endpoint health, and active non-demo infrastructure alerts. Its cyan, blue, violet, green, amber, and red signals follow the CloudSphere identity while preserving familiar operational severity colors.
+The Infrastructure Command Center summarizes both Azure hosts with availability, fast host CPU, memory, root-disk use, uptime, load averages, network and disk throughput, container CPU and memory, Prometheus target state, HTTP endpoint health, and pending or firing platform alerts. Controlled presentation alerts are included while passive order and inventory reminders are excluded. Its cyan, blue, violet, green, amber, and red signals follow the CloudSphere identity while preserving familiar operational severity colors.
 
 Return demonstration business values to their initial state:
 
