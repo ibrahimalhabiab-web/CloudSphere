@@ -114,7 +114,7 @@ groups:
           runbook: "docs/OPERATIONS_RUNBOOK.md#7-host-or-container-pressure"
 
       - alert: CloudSphereControlledCpuLoad
-        expr: (sum(rate(container_cpu_usage_seconds_total{name=~".*demo-app.*"}[10s])) > 0.45) and on() (max(cloudsphere_demo_cpu_stress_active) == 1)
+        expr: (sum(rate(container_cpu_usage_seconds_total{name=~".*cloudsphere-app.*"}[10s])) > 0.45) and on() (max(cloudsphere_cpu_stress_active) == 1)
         for: 4s
         labels:
           severity: warning
@@ -122,40 +122,40 @@ groups:
           presentation: "true"
         annotations:
           summary: "Controlled CloudSphere CPU load is active"
-          description: "The bounded presentation workload is producing measurable CPU pressure in the demo container."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
+          description: "The bounded presentation workload is producing measurable CPU pressure in the CloudSphere container."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-cloudsphere-application-and-dashboard-reset"
 
   - name: business-service
     rules:
-      - alert: DemoApplicationHighErrorRate
-        expr: demo:http_error_ratio:rate10s > 0.05
+      - alert: CloudSphereApplicationHighErrorRate
+        expr: cloudsphere:http_error_ratio:rate10s > 0.05
         for: 4s
         labels:
           severity: critical
           team: application
         annotations:
           summary: "Application error ratio exceeds 5%"
-          description: "The demonstration application's ten-second HTTP error ratio is {{ $value | humanizePercentage }}."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
+          description: "The CloudSphere application's ten-second HTTP error ratio is {{ $value | humanizePercentage }}."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-cloudsphere-application-and-dashboard-reset"
 
-      - alert: DemoInventoryLow
-        expr: demo_inventory_level < 20
+      - alert: CloudSphereInventoryLow
+        expr: cloudsphere_inventory_level < 20
         for: 2m
         labels:
           severity: warning
           team: business-operations
         annotations:
-          summary: "Demonstration inventory is low"
+          summary: "CloudSphere inventory is low"
           description: "The simulated inventory level has fallen below 20 units. Current level: {{ $value }}."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-cloudsphere-application-and-dashboard-reset"
 
-      - alert: DemoNoRecentOrders
-        expr: increase(demo_orders_total[30m]) == 0
+      - alert: CloudSphereNoRecentOrders
+        expr: increase(cloudsphere_orders_total[30m]) == 0
         for: 30m
         labels:
           severity: info
           team: business-operations
         annotations:
-          summary: "No demonstration orders in the last thirty minutes"
-          description: "The order counter has not increased. This is expected until traffic is generated during the demonstration."
-          runbook: "docs/OPERATIONS_RUNBOOK.md#8-demo-application-and-dashboard-reset"
+          summary: "No CloudSphere orders in the last thirty minutes"
+          description: "The order counter has not increased. This is expected until traffic is generated during the presentation."
+          runbook: "docs/OPERATIONS_RUNBOOK.md#8-cloudsphere-application-and-dashboard-reset"

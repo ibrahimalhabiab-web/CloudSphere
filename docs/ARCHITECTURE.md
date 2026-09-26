@@ -2,7 +2,7 @@
 
 ## 1. Design goal
 
-The platform joins internal software delivery and operational observability in one repeatable Azure environment. GitLab hosts source code, collaboration, merge requests, and pipelines. A separate monitoring workload collects the health of GitLab, Runner, Linux, Docker, endpoints, and a business demonstration service.
+The platform joins internal software delivery and operational observability in one repeatable Azure environment. GitLab hosts source code, collaboration, merge requests, and pipelines. A separate monitoring workload collects the health of GitLab, Runner, Linux, Docker, endpoints, and the CloudSphere business service.
 
 ## 2. Deployment model
 
@@ -10,7 +10,7 @@ The platform joins internal software delivery and operational observability in o
 |---|---|---|
 | Azure foundation | One resource group, one VNet, two subnets, two NSGs, two static public IPs | Isolation, restricted ingress, routing, identity, disks, and lifecycle |
 | GitLab VM | Ubuntu 24.04, Docker Compose, GitLab CE, Node Exporter | Repositories, branches, merge requests, users, CI orchestration, artifacts, and host telemetry |
-| Monitoring VM | Ubuntu 24.04, Docker Compose | Runner, Prometheus, Grafana, Alertmanager, exporters, and demo application |
+| Monitoring VM | Ubuntu 24.04, Docker Compose | Runner, Prometheus, Grafana, Alertmanager, exporters, and the CloudSphere application |
 | Infrastructure as code | Terraform and cloud-init | Repeatable Azure provisioning and host bootstrap |
 | Operations automation | Bash | Deployment, secrets, health checks, Runner registration, backup, restore, and teardown |
 
@@ -62,7 +62,7 @@ flowchart TB
 | Monitoring host SSH, TCP 22 | Monitoring public IP | Administrator CIDR only |
 | Prometheus, TCP 9090 | Monitoring VM loopback | SSH tunnel only by default |
 | Alertmanager, TCP 9093 | Monitoring VM loopback | SSH tunnel only |
-| Demo service, TCP 8000 | Monitoring VM loopback | Local demonstration traffic only |
+| CloudSphere service, TCP 8000 | Monitoring VM loopback | Local presentation traffic only |
 | GitLab metrics, health, and Node Exporter | Private VNet | GitLab monitoring allowlist includes `10.42.0.0/16`; the GitLab NSG has no public exporter rule |
 | Exporters and Runner metrics | Monitoring Docker network | No Azure public rule |
 
@@ -81,11 +81,11 @@ Azure NSGs retain the default VNet-to-VNet allowance, so Prometheus can reach Gi
 
 ## 6. Monitoring flow
 
-1. Prometheus scrapes its own service, both Linux hosts, cAdvisor, Blackbox Exporter, the demo application, GitLab Runner, and GitLab's `/-/metrics` endpoint.
+1. Prometheus scrapes its own service, both Linux hosts, cAdvisor, Blackbox Exporter, the CloudSphere application, GitLab Runner, and GitLab's `/-/metrics` endpoint.
 2. Blackbox Exporter independently probes GitLab `/-/health` along with monitoring-service health endpoints.
 3. Recording rules calculate host utilization, application error ratios, and GitLab availability ratios.
 4. Alert rules cover target loss, HTTP probe failures, host pressure, container pressure, GitLab availability, Runner availability, application errors, inventory, and order inactivity.
-5. Alertmanager groups and routes alerts to the included demonstration webhook.
+5. Alertmanager groups and routes alerts to the included CloudSphere webhook.
 6. Grafana loads the data source and both dashboards automatically from version-controlled JSON.
 
 ## 7. Persistence

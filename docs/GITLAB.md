@@ -79,7 +79,7 @@ When `GITLAB_PRIVATE_URL` is present, the script registers through that private 
 | `python_and_dashboards` | validate | Python syntax and both Grafana dashboard JSON documents |
 | `compose_validate` | validate | Monitoring and GitLab Compose model validation with CI-only placeholder secrets |
 | `secret_detection` | test | GitLab-maintained committed-secret scanning |
-| `unit_tests` | test | Demo application metric and reset tests |
+| `unit_tests` | test | CloudSphere application metric and reset tests |
 | `deploy_monitoring` | deploy | Protected manual transfer and restart of the monitoring stack |
 
 Terraform apply and destroy are intentionally not automatic pipeline jobs. Infrastructure changes require an operator to review the Terraform plan and approve the local deployment script.
@@ -110,14 +110,14 @@ ssh-keygen -lf monitoring_known_hosts
 
 Do not accept an unverified `ssh-keyscan` result inside the pipeline. Update `DEPLOY_KNOWN_HOSTS` after a legitimate host-key rotation.
 
-## 7. Merge-request demonstration
+## 7. Merge-request presentation
 
 ```bash
-git switch -c feature/demo-pipeline
-printf '\n' >> docs/DEMO_GUIDE.md
-git add docs/DEMO_GUIDE.md
-git commit -m "Demonstrate merge request pipeline"
-git push -u internal feature/demo-pipeline
+git switch -c feature/pipeline-presentation
+printf '\n' >> docs/PRESENTATION_GUIDE.md
+git add docs/PRESENTATION_GUIDE.md
+git commit -m "Present merge request pipeline"
+git push -u internal feature/pipeline-presentation
 ```
 
 Then:
@@ -126,7 +126,7 @@ Then:
 2. Show the commit, changed file, reviewer, and pipeline widget.
 3. Open the pipeline and show validation/test jobs.
 4. Merge after the pipeline passes.
-5. Open the default-branch pipeline and demonstrate the manual deployment job only if deployment variables are configured.
+5. Open the default-branch pipeline and show the manual deployment job only if deployment variables are configured.
 
 Do not create meaningless commits in the final repository merely for a presentation; use a genuine documentation or configuration improvement.
 

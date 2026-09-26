@@ -132,15 +132,15 @@ docker compose --env-file .env restart gitlab-runner
 5. Remove only reviewed, unused images; never delete persistent volumes as a space-recovery shortcut.
 6. Resize the affected VM during an approved maintenance window when pressure is recurring.
 
-## 8. Demo application and dashboard reset
+## 8. CloudSphere application and dashboard reset
 
-Use the browser-based CloudSphere Demo Control for a presentation:
+Use the browser-based CloudSphere Operations Console for a presentation:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-Select **Generate 3 demo orders** for business activity, **Trigger alert sequence** for the controlled high-error demonstration, **Run 30-second server load** for bounded CPU pressure, and **Reset all metrics** for recovery. The page polls its own current state and opens Grafana with a fifteen-minute range and two-second refresh.
+Select **Generate 3 orders** for business activity, **Trigger alert sequence** for the controlled high-error sequence, **Run 30-second server load** for bounded CPU pressure, and **Reset all metrics** for recovery. The page polls its own current state and opens Grafana with a fifteen-minute range and two-second refresh.
 
 If the browser controls are unavailable, use these operator fallback endpoints:
 
@@ -148,11 +148,11 @@ If the browser controls are unavailable, use these operator fallback endpoints:
 curl "http://127.0.0.1:8000/simulate/order?amount=125.50&quantity=2"
 curl "http://127.0.0.1:8000/simulate/restock?quantity=50"
 curl -i "http://127.0.0.1:8000/simulate/error"
-curl -X POST -H "X-CloudSphere-Demo: 1" http://127.0.0.1:8000/simulate/load/start
-curl -X POST -H "X-CloudSphere-Demo: 1" http://127.0.0.1:8000/simulate/load/stop
+curl -X POST -H "X-CloudSphere-Control: 1" http://127.0.0.1:8000/simulate/load/start
+curl -X POST -H "X-CloudSphere-Control: 1" http://127.0.0.1:8000/simulate/load/stop
 ```
 
-Reset the in-memory demonstration values:
+Reset the in-memory CloudSphere values:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/simulate/reset

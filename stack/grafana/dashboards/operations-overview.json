@@ -77,7 +77,7 @@
       "gridPos": {"h": 5, "w": 4, "x": 4, "y": 0},
       "id": 5,
       "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "percentChangeColorMode": "standard", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showPercentChange": false, "textMode": "auto", "wideLayout": true},
-      "targets": [{"editorMode": "code", "expr": "sum(ALERTS{alertstate=~\"pending|firing\",alertname!~\"DemoInventoryLow|DemoNoRecentOrders\"}) or vector(0)", "instant": true, "legendFormat": "Alerts", "range": false, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "sum(ALERTS{alertstate=~\"pending|firing\",alertname!~\"CloudSphereInventoryLow|CloudSphereNoRecentOrders\"}) or vector(0)", "instant": true, "legendFormat": "Alerts", "range": false, "refId": "A"}],
       "title": "Active Platform Alerts",
       "type": "stat"
     },
@@ -315,7 +315,7 @@
       "gridPos": {"h": 7, "w": 12, "x": 0, "y": 29},
       "id": 11,
       "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "Service"}]},
-      "targets": [{"editorMode": "code", "expr": "up{job=~\"prometheus|node|containers|blackbox-exporter|gitlab|gitlab-node|gitlab-runner|demo-application\"}", "format": "table", "instant": true, "legendFormat": "{{job}}", "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "up{job=~\"prometheus|node|containers|blackbox-exporter|gitlab|gitlab-node|gitlab-runner|cloudsphere-application\"}", "format": "table", "instant": true, "legendFormat": "{{job}}", "refId": "A"}],
       "title": "Infrastructure Target Status",
       "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true}, "indexByName": {"job": 0, "role": 1, "instance": 2, "Value": 3}, "renameByName": {"Value": "Status", "instance": "Target", "job": "Service", "role": "Role"}}}],
       "type": "table"
@@ -353,7 +353,7 @@
       "gridPos": {"h": 7, "w": 24, "x": 0, "y": 36},
       "id": 12,
       "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
-      "targets": [{"editorMode": "code", "expr": "ALERTS{alertstate=~\"pending|firing\",alertname!~\"DemoInventoryLow|DemoNoRecentOrders\"}", "format": "table", "instant": true, "refId": "A"}],
+      "targets": [{"editorMode": "code", "expr": "ALERTS{alertstate=~\"pending|firing\",alertname!~\"CloudSphereInventoryLow|CloudSphereNoRecentOrders\"}", "format": "table", "instant": true, "refId": "A"}],
       "title": "Platform Alert Pipeline",
       "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": true, "__name__": true, "job": true}, "indexByName": {"alertstate": 0, "alertname": 1, "severity": 2, "instance": 3}, "renameByName": {"alertstate": "State", "alertname": "Alert", "instance": "Instance", "severity": "Severity"}}}],
       "type": "table"

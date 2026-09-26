@@ -56,7 +56,7 @@ The GitLab pipeline must also pass its validation and unit-test stages.
 | T18 | Runner and GitLab host metrics | Query `up{job="gitlab-runner"}` and `up{job="gitlab-node"}`. | Both metrics targets return `1`. |
 | T19 | Host/container telemetry | Inspect CPU, memory, disk, and container panels. | Current non-empty values appear for both Linux hosts and monitoring containers. |
 | T20 | Business activity | Submit order, restock, and error requests. | Orders, revenue, inventory, and errors change after scraping. |
-| T21 | Demo reset | POST to `/simulate/reset`. | Orders, revenue, errors, and inventory return to the documented initial state after scraping. |
+| T21 | CloudSphere reset | POST to `/simulate/reset`. | Orders, revenue, errors, and inventory return to the documented initial state after scraping. |
 | T22 | Alert lifecycle | Stop GitLab or Runner in a controlled window, wait for the rule, then restart. | Alert becomes pending/firing, reaches Alertmanager, and resolves after recovery. |
 
 ## Security, persistence, and recovery
@@ -75,7 +75,7 @@ The GitLab pipeline must also pass its validation and unit-test stages.
 ## Acceptance criteria
 
 - T01-T10 and T13-T21 pass.
-- T22 is demonstrated in a controlled maintenance window.
+- T22 is exercised in a controlled maintenance window.
 - T23-T30 pass or have an explicit documented exception and owner.
 - A merge request shows both collaboration and a passing pipeline.
 - The protected manual deployment runs only from the default branch.

@@ -40,7 +40,7 @@ python_and_dashboards:
   stage: validate
   image: python:3.13-alpine
   script:
-    - python -m py_compile stack/demo-app/app.py
+    - python -m py_compile stack/cloudsphere-app/app.py
     - python -m json.tool stack/grafana/dashboards/operations-overview.json > /dev/null
     - python -m json.tool stack/grafana/dashboards/gitlab-platform.json > /dev/null
 
@@ -61,12 +61,12 @@ unit_tests:
   stage: test
   image: python:3.13-alpine
   script:
-    - python -m unittest discover -s stack/demo-app -p 'test_*.py' -v
+    - python -m unittest discover -s stack/cloudsphere-app -p 'test_*.py' -v
 
 deploy_monitoring:
   stage: deploy
   image: alpine:3.22
-  resource_group: monitoring-demo
+  resource_group: cloudsphere-monitoring
   before_script:
     - apk add --no-cache bash openssh-client tar
     - test -n "$MONITORING_HOST"
@@ -92,7 +92,7 @@ deploy_monitoring:
     - tar -C stack -czf - . | ssh -p "${MONITORING_SSH_PORT:-22}" "$MONITORING_USER@$MONITORING_HOST" 'install -d /opt/monitoring && tar -xzf - -C /opt/monitoring'
     - ssh -p "${MONITORING_SSH_PORT:-22}" "$MONITORING_USER@$MONITORING_HOST" 'cd /opt/monitoring && chmod +x scripts/*.sh && ./scripts/deploy-local.sh'
   environment:
-    name: demo
+    name: cloudsphere
     url: $GRAFANA_URL
   rules:
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

@@ -2,7 +2,7 @@
 
 The repository contains empty `gitlab-metrics.yml`, `gitlab-node.yml`, and `gitlab-health.yml` target lists so Prometheus starts cleanly before Azure addresses exist. `scripts/deploy-azure.sh` replaces the remote copies with Terraform's private GitLab address. Do not commit live target addresses.
 
-For a local demonstration, copy the examples below and replace the address:
+For a local presentation, copy the examples below and replace the address:
 
 ```yaml
 # gitlab-metrics.yml

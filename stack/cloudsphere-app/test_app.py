@@ -35,9 +35,9 @@ class FakeProcess:
         return self.returncode or 0
 
 
-class DemoApplicationTests(unittest.TestCase):
+class CloudSphereApplicationTests(unittest.TestCase):
     def setUp(self):
-        app.reset_demo_state()
+        app.reset_cloudsphere_state()
 
     def test_metric_label_escapes_prometheus_special_characters(self):
         self.assertEqual(app.metric_label('a"b\\c\n'), 'a\\"b\\\\c\\n')
@@ -49,7 +49,7 @@ class DemoApplicationTests(unittest.TestCase):
             app.STATE["inventory_level"] = 12
             app.REQUESTS[("GET", "/simulate/order", "200")] = 4
 
-        snapshot = app.reset_demo_state()
+        snapshot = app.reset_cloudsphere_state()
 
         self.assertEqual(snapshot, app.INITIAL_STATE)
         self.assertEqual(dict(app.REQUESTS), {})
@@ -57,13 +57,13 @@ class DemoApplicationTests(unittest.TestCase):
     def test_metrics_include_required_business_series(self):
         metrics = app.render_metrics().decode("utf-8")
         for metric in (
-            "demo_orders_total",
-            "demo_revenue_total",
-            "demo_inventory_level",
-            "demo_application_errors_total",
-            "cloudsphere_demo_cpu_stress_active",
-            "cloudsphere_demo_cpu_stress_remaining_seconds",
-            "cloudsphere_demo_cpu_stress_runs_total",
+            "cloudsphere_orders_total",
+            "cloudsphere_revenue_total",
+            "cloudsphere_inventory_level",
+            "cloudsphere_application_errors_total",
+            "cloudsphere_cpu_stress_active",
+            "cloudsphere_cpu_stress_remaining_seconds",
+            "cloudsphere_cpu_stress_runs_total",
         ):
             self.assertIn(metric, metrics)
 
@@ -78,7 +78,7 @@ class DemoApplicationTests(unittest.TestCase):
 
         snapshot = app.state_snapshot()
         self.assertEqual(snapshot["state"]["application_errors_total"], 1)
-        self.assertEqual(snapshot["service"]["name"], "CloudSphere Demo Control")
+        self.assertEqual(snapshot["service"]["name"], "CloudSphere Operations Console")
 
     def test_invalid_order_is_rejected_without_changing_state(self):
         with self.assertRaisesRegex(ValueError, "positive"):
@@ -90,9 +90,9 @@ class DemoApplicationTests(unittest.TestCase):
     def test_dashboard_contains_presentation_controls(self):
         page = app.DASHBOARD_HTML.decode("utf-8")
         for expected in (
-            "CloudSphere Demo Control",
+            "CloudSphere Operations Console",
             "/assets/cloudsphere-avatar.png",
-            "Generate 3 demo orders",
+            "Generate 3 orders",
             "Trigger alert sequence",
             "Reset all metrics",
             "Infrastructure pulse",
@@ -127,12 +127,12 @@ class DemoApplicationTests(unittest.TestCase):
             mock.patch.object(app, "_start_cpu_stress_watcher"),
         ):
             app.start_controlled_cpu_load()
-            snapshot = app.reset_demo_state()
+            snapshot = app.reset_cloudsphere_state()
         self.assertTrue(process.terminated)
         self.assertEqual(snapshot, app.INITIAL_STATE)
 
 
-class DemoApplicationHTTPTests(unittest.TestCase):
+class CloudSphereApplicationHTTPTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), app.Handler)
@@ -147,7 +147,7 @@ class DemoApplicationHTTPTests(unittest.TestCase):
         cls.thread.join(timeout=2)
 
     def setUp(self):
-        app.reset_demo_state()
+        app.reset_cloudsphere_state()
 
     def test_root_serves_html_console(self):
         with urllib.request.urlopen(f"{self.base_url}/", timeout=2) as response:
@@ -161,11 +161,11 @@ class DemoApplicationHTTPTests(unittest.TestCase):
             payload = json.load(response)
             self.assertEqual(response.status, 200)
             self.assertEqual(payload["state"]["inventory_level"], 100)
-            self.assertEqual(payload["service"]["version"], "2.2.0")
+            self.assertEqual(payload["service"]["version"], "2.3.0")
             self.assertFalse(payload["stress"]["active"])
             self.assertEqual(payload["stress"]["duration_seconds"], 30)
 
-    def test_load_endpoint_requires_demo_header(self):
+    def test_load_endpoint_requires_control_header(self):
         request = urllib.request.Request(f"{self.base_url}/simulate/load/start", method="POST")
         with self.assertRaises(urllib.error.HTTPError) as raised:
             urllib.request.urlopen(request, timeout=2)
