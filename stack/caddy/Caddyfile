@@ -1,0 +1,84 @@
+{
+	admin off
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$PUBLIC_APEX_DOMAIN:cloudsphere-sda.online} {
+	header -Server
+	redir https://{$PUBLIC_DOMAIN:www.cloudsphere-sda.online}{uri} permanent
+}
+
+{$PUBLIC_DOMAIN:www.cloudsphere-sda.online} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		-Server
+		-Via
+	}
+
+	log {
+		output stdout
+		format console
+	}
+
+	route {
+		# The public page polls this sanitized, read-only status endpoint.
+		@public_status {
+			method GET HEAD
+			path /api/public/status
+		}
+		handle @public_status {
+			reverse_proxy cloudsphere-public:8000
+		}
+
+		# These internal, observability, and control paths must never be public.
+		@blocked_path path /simulate /simulate/* /metrics /alerts /api /api/* /public /public/*
+		respond @blocked_path "Not Found" 404
+
+		# The public endpoint is read-only even if a new route is added later.
+		@unsafe_method method POST PUT PATCH DELETE CONNECT TRACE
+		respond @unsafe_method "Method Not Allowed" 405
+
+		# Serve the safe public page at the domain root without exposing /public.
+		@public_root {
+			method GET HEAD
+			path /
+		}
+		handle @public_root {
+			rewrite * /public
+			reverse_proxy cloudsphere-public:8000
+		}
+
+		# The public page uses only this branded image from the application.
+		@brand_asset {
+			method GET HEAD
+			path /assets/cloudsphere-avatar.png
+		}
+		handle @brand_asset {
+			reverse_proxy cloudsphere-public:8000
+		}
+
+		# A minimal upstream health endpoint is safe for availability checks.
+		@health {
+			method GET HEAD
+			path /health
+		}
+		handle @health {
+			reverse_proxy cloudsphere-public:8000
+		}
+
+		# Deny every path not explicitly allowlisted above.
+		handle {
+			respond "Not Found" 404
+		}
+	}
+}

@@ -29,8 +29,18 @@ output "admin_username" {
 }
 
 output "grafana_url" {
-  description = "Grafana URL. Access is restricted by the NSG to admin_source_cidr."
-  value       = "http://${azurerm_public_ip.monitoring.ip_address}:3000"
+  description = "Grafana URL after opening the documented SSH tunnel to monitoring VM loopback."
+  value       = "http://127.0.0.1:3000"
+}
+
+output "grafana_ssh_tunnel_command" {
+  description = "Command that opens the private Grafana endpoint on local port 3000."
+  value       = "ssh -L 3000:127.0.0.1:3000 ${var.admin_username}@${azurerm_public_ip.monitoring.ip_address}"
+}
+
+output "public_frontend_url" {
+  description = "Public HTTPS URL when public frontend access is enabled. DNS is managed externally."
+  value       = var.public_frontend_enabled ? "https://${lower(var.public_frontend_domain)}" : null
 }
 
 output "gitlab_url" {

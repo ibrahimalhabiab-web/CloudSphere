@@ -51,6 +51,15 @@ REQUESTS = defaultdict(int)
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 BRAND_AVATAR_URL = "/assets/cloudsphere-avatar.png"
 BRAND_AVATAR_PATH = os.path.join(APP_DIR, "assets", "cloudsphere-avatar.png")
+PUBLIC_ONLY_GET_PATHS = frozenset(
+    {
+        "/public",
+        "/public/",
+        "/api/public/status",
+        BRAND_AVATAR_URL,
+        "/health",
+    }
+)
 
 
 DASHBOARD_HTML = r"""<!doctype html>
@@ -1109,8 +1118,439 @@ DASHBOARD_HTML = r"""<!doctype html>
 """.encode("utf-8")
 
 
+PUBLIC_HTML = r"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07182d">
+  <meta name="description" content="CloudSphere service availability and platform status.">
+  <title>CloudSphere | Platform Status</title>
+  <link rel="icon" type="image/png" href="/assets/cloudsphere-avatar.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #061326;
+      --bg-deep: #07182d;
+      --surface: rgba(13, 31, 55, 0.82);
+      --surface-strong: rgba(20, 43, 72, 0.9);
+      --line: rgba(99, 159, 210, 0.25);
+      --text: #f5f9ff;
+      --secondary: #b8c8df;
+      --muted: #8fa5c2;
+      --cyan: #2bc3e8;
+      --cyan-light: #74e1f7;
+      --blue: #5b8cff;
+      --violet: #9b8cff;
+      --green: #48d6a0;
+      --amber: #f6c85f;
+      --shadow: 0 30px 90px rgba(0, 5, 16, 0.42);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 14% -8%, rgba(43, 195, 232, 0.2), transparent 34rem),
+        radial-gradient(circle at 92% 6%, rgba(91, 140, 255, 0.2), transparent 36rem),
+        radial-gradient(circle at 72% 84%, rgba(155, 140, 255, 0.14), transparent 32rem),
+        linear-gradient(145deg, var(--bg) 0%, #081629 48%, #13183c 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(116, 225, 247, 0.027) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(116, 225, 247, 0.027) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, black, transparent 92%);
+    }
+
+    .shell {
+      width: min(1160px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 46px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 62px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; }
+
+    .logo {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      flex: 0 0 62px;
+    }
+
+    .logo::before {
+      content: "";
+      position: absolute;
+      inset: 7%;
+      border-radius: 50%;
+      background: rgba(43, 195, 232, 0.15);
+      filter: blur(18px);
+    }
+
+    .logo img {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 18px rgba(43, 195, 232, 0.28));
+    }
+
+    .brand-name {
+      display: block;
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      display: block;
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 14px;
+      border: 1px solid rgba(72, 214, 160, 0.3);
+      border-radius: 999px;
+      background: rgba(72, 214, 160, 0.09);
+      color: #c8fbea;
+      font-size: 0.82rem;
+    }
+
+    .live-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(72, 214, 160, 0.11), 0 0 18px rgba(72, 214, 160, 0.38);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(290px, 0.7fr);
+      gap: 46px;
+      align-items: center;
+      padding: 22px 0 56px;
+    }
+
+    .eyebrow {
+      margin: 0 0 15px;
+      color: var(--cyan-light);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(3.15rem, 7.2vw, 6.4rem);
+      line-height: 0.94;
+      letter-spacing: -0.065em;
+    }
+
+    .gradient-text {
+      display: block;
+      color: transparent;
+      background: linear-gradient(90deg, var(--cyan-light), var(--blue) 55%, var(--violet));
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+
+    .hero-copy {
+      max-width: 680px;
+      margin: 25px 0 0;
+      color: var(--secondary);
+      font-size: clamp(1rem, 1.7vw, 1.16rem);
+    }
+
+    .signal-card {
+      position: relative;
+      overflow: hidden;
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(155deg, rgba(19, 48, 77, 0.94), rgba(15, 29, 55, 0.88));
+      box-shadow: var(--shadow);
+    }
+
+    .signal-card::after {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      right: -76px;
+      bottom: -86px;
+      border-radius: 50%;
+      background: rgba(43, 195, 232, 0.13);
+      filter: blur(4px);
+    }
+
+    .signal-label {
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 760;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .signal-value {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 8px 0 17px;
+      color: var(--green);
+      font-size: clamp(2.2rem, 4.7vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -0.055em;
+    }
+
+    .signal-value::before {
+      content: "";
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 22px currentColor;
+    }
+
+    .signal-copy { position: relative; z-index: 1; margin: 0; color: var(--secondary); }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .status-card {
+      min-height: 148px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: 0 18px 46px rgba(1, 7, 18, 0.2);
+      backdrop-filter: blur(14px);
+    }
+
+    .status-card:nth-child(2) { background: linear-gradient(145deg, rgba(11, 45, 67, 0.88), var(--surface)); }
+    .status-card:nth-child(3) { background: linear-gradient(145deg, rgba(37, 37, 83, 0.87), var(--surface)); }
+
+    .card-label {
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 760;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .card-value {
+      margin-top: 13px;
+      color: var(--text);
+      font-size: clamp(1.55rem, 3.2vw, 2.25rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .card-value.accent { color: var(--cyan-light); }
+    .card-value.good { color: var(--green); }
+    .card-note { margin-top: 4px; color: var(--muted); font-size: 0.84rem; }
+
+    .assurance {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+      padding: 22px 24px;
+      border: 1px solid rgba(91, 140, 255, 0.25);
+      border-radius: 20px;
+      background: linear-gradient(90deg, rgba(21, 46, 75, 0.76), rgba(29, 31, 72, 0.75));
+    }
+
+    .assurance strong { display: block; margin-bottom: 4px; font-size: 1.02rem; }
+    .assurance p { margin: 0; color: var(--secondary); font-size: 0.91rem; }
+
+    .read-only {
+      flex: 0 0 auto;
+      padding: 7px 11px;
+      border: 1px solid rgba(116, 225, 247, 0.26);
+      border-radius: 999px;
+      color: var(--cyan-light);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 30px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 820px) {
+      .topbar { margin-bottom: 34px; }
+      .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 0; }
+      .status-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 1160px); padding-top: 18px; }
+      .topbar { align-items: flex-start; }
+      .logo { width: 52px; height: 52px; flex-basis: 52px; }
+      .brand-subtitle { font-size: 0.66rem; }
+      .live-pill { padding: 8px 10px; font-size: 0.72rem; }
+      h1 { font-size: clamp(2.75rem, 16vw, 4.5rem); }
+      .assurance, footer { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo"><img src="/assets/cloudsphere-avatar.png" alt="CloudSphere logo"></div>
+        <div>
+          <span class="brand-name">CloudSphere</span>
+          <span class="brand-subtitle">Service platform</span>
+        </div>
+      </div>
+      <div class="live-pill"><span class="live-dot"></span><span id="connection-label">Live service</span></div>
+    </header>
+
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Cloud operations, made visible</p>
+        <h1 id="page-title">Built to stay <span class="gradient-text">observable.</span></h1>
+        <p class="hero-copy">CloudSphere brings service health and infrastructure visibility into one focused experience—clear, responsive, and designed for confidence.</p>
+      </div>
+      <aside class="signal-card" aria-label="Current service state">
+        <div class="signal-label">Current service state</div>
+        <div id="hero-status" class="signal-value">Online</div>
+        <p class="signal-copy">The CloudSphere public service is responding normally.</p>
+      </aside>
+    </section>
+
+    <section class="status-grid" aria-label="Live platform status">
+      <article class="status-card">
+        <div class="card-label">Availability</div>
+        <div id="availability" class="card-value good">Operational</div>
+        <div class="card-note">Live service response</div>
+      </article>
+      <article class="status-card">
+        <div class="card-label">Service uptime</div>
+        <div id="uptime" class="card-value accent">Loading…</div>
+        <div class="card-note">Current application process</div>
+      </article>
+      <article class="status-card">
+        <div class="card-label">Status updated</div>
+        <div id="updated" class="card-value">Now</div>
+        <div class="card-note">Automatically refreshed</div>
+      </article>
+    </section>
+
+    <section class="assurance" aria-label="Public status information">
+      <div>
+        <strong>Focused public visibility</strong>
+        <p>This page presents essential availability information without exposing internal administration.</p>
+      </div>
+      <span class="read-only">Status view</span>
+    </section>
+
+    <footer>
+      <span>© <span id="year"></span> CloudSphere-SDA</span>
+      <span>Operate. Observe. Respond.</span>
+    </footer>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+
+    function formatUptime(totalSeconds) {
+      const seconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (days > 0) return `${days}d ${hours}h`;
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
+    }
+
+    function renderUnavailable() {
+      byId("hero-status").textContent = "Checking";
+      byId("availability").textContent = "Checking";
+      byId("uptime").textContent = "—";
+      byId("updated").textContent = "Retrying";
+      byId("connection-label").textContent = "Status pending";
+    }
+
+    async function refreshPublicStatus() {
+      try {
+        const response = await fetch("/api/public/status", {cache: "no-store"});
+        if (!response.ok) throw new Error(`Status request failed (${response.status})`);
+        const payload = await response.json();
+        byId("hero-status").textContent = "Online";
+        byId("availability").textContent = payload.status === "operational" ? "Operational" : "Available";
+        byId("uptime").textContent = formatUptime(payload.uptime_seconds);
+        byId("updated").textContent = "Just now";
+        byId("connection-label").textContent = "Live service";
+      } catch (error) {
+        renderUnavailable();
+      }
+    }
+
+    byId("year").textContent = new Date().getFullYear();
+    refreshPublicStatus();
+    window.setInterval(refreshPublicStatus, 15000);
+  </script>
+</body>
+</html>
+""".encode("utf-8")
+
+
 def json_bytes(payload):
     return json.dumps(payload, separators=(",", ":")).encode("utf-8")
+
+
+def public_only_enabled():
+    """Return whether this process should expose only the public status surface."""
+    return os.getenv("PUBLIC_ONLY", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def metric_label(value):
@@ -1316,6 +1756,16 @@ def state_snapshot():
     }
 
 
+def public_status_snapshot():
+    """Return the minimal non-sensitive status exposed by the public page."""
+    return {
+        "service": "CloudSphere",
+        "status": "operational",
+        "uptime_seconds": round(time.time() - START_TIME, 3),
+        "checked_at": round(time.time(), 3),
+    }
+
+
 def render_metrics():
     with LOCK:
         snapshot = dict(STATE)
@@ -1372,7 +1822,14 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             REQUESTS[(self.command, path, str(status))] += 1
 
-    def send_payload(self, status, payload, content_type="application/json; charset=utf-8", cache_control="no-store"):
+    def send_payload(
+        self,
+        status,
+        payload,
+        content_type="application/json; charset=utf-8",
+        cache_control="no-store",
+        include_body=True,
+    ):
         body = payload if isinstance(payload, bytes) else json_bytes(payload)
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -1386,12 +1843,16 @@ class Handler(BaseHTTPRequestHandler):
             "connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
         )
         self.end_headers()
-        self.wfile.write(body)
+        if include_body:
+            self.wfile.write(body)
         self.record(status)
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        query = parse_qs(parsed.query)
+
+        if public_only_enabled() and parsed.path not in PUBLIC_ONLY_GET_PATHS:
+            self.send_payload(404, {"error": "not found"})
+            return
 
         if parsed.path == BRAND_AVATAR_URL:
             try:
@@ -1407,8 +1868,16 @@ class Handler(BaseHTTPRequestHandler):
             self.send_payload(200, DASHBOARD_HTML, "text/html; charset=utf-8")
             return
 
+        if parsed.path in ("/public", "/public/"):
+            self.send_payload(200, PUBLIC_HTML, "text/html; charset=utf-8")
+            return
+
         if parsed.path == "/api/state":
             self.send_payload(200, state_snapshot())
+            return
+
+        if parsed.path == "/api/public/status":
+            self.send_payload(200, public_status_snapshot())
             return
 
         if parsed.path == "/health":
@@ -1421,6 +1890,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/simulate/order":
             try:
+                query = parse_qs(parsed.query)
                 amount = query.get("amount", ["100"])[0]
                 quantity = query.get("quantity", ["1"])[0]
                 snapshot = create_order(amount, quantity)
@@ -1434,6 +1904,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/simulate/restock":
             try:
+                query = parse_qs(parsed.query)
                 quantity = query.get("quantity", ["50"])[0]
                 level = restock_inventory(quantity)
                 self.send_payload(200, {"restocked": int(quantity), "inventory_level": level})
@@ -1448,8 +1919,57 @@ class Handler(BaseHTTPRequestHandler):
 
         self.send_payload(404, {"error": "not found"})
 
+    def do_HEAD(self):
+        if not public_only_enabled():
+            self.send_error(501, "Unsupported method ('HEAD')")
+            return
+
+        path = urlparse(self.path).path
+        if path not in PUBLIC_ONLY_GET_PATHS:
+            self.send_payload(404, {"error": "not found"}, include_body=False)
+            return
+
+        if path == BRAND_AVATAR_URL:
+            try:
+                with open(BRAND_AVATAR_PATH, "rb") as avatar_file:
+                    avatar = avatar_file.read()
+            except OSError:
+                self.send_payload(404, {"error": "brand avatar not found"}, include_body=False)
+            else:
+                self.send_payload(
+                    200,
+                    avatar,
+                    "image/png",
+                    "public, max-age=86400",
+                    include_body=False,
+                )
+            return
+
+        if path in ("/public", "/public/"):
+            self.send_payload(
+                200,
+                PUBLIC_HTML,
+                "text/html; charset=utf-8",
+                include_body=False,
+            )
+            return
+
+        if path == "/api/public/status":
+            self.send_payload(200, public_status_snapshot(), include_body=False)
+            return
+
+        self.send_payload(
+            200,
+            {"status": "ok", "uptime_seconds": round(time.time() - START_TIME, 3)},
+            include_body=False,
+        )
+
     def do_POST(self):
         path = urlparse(self.path).path
+
+        if public_only_enabled():
+            self.send_payload(404, {"error": "not found"})
+            return
 
         if path == "/simulate/reset":
             self.send_payload(200, {"reset": True, "state": reset_cloudsphere_state()})

@@ -24,7 +24,8 @@ The platform gives an engineering team one workflow from source code to operatio
 ```mermaid
 flowchart LR
     User[Developers and operators]
-    Azure[Azure NSGs: trusted CIDRs only]
+    Azure[Azure NSGs: restricted administration and opt-in public HTTPS]
+    Tunnel[SSH tunnel to monitoring VM loopback]
 
     subgraph GitLabVM[GitLab VM - 10.42.2.0/24]
         GitLab[GitLab CE]
@@ -48,7 +49,8 @@ flowchart LR
 
     User --> Azure
     Azure --> GitLab
-    Azure --> Grafana
+    Azure --> Tunnel
+    Tunnel --> Grafana
     GitLab --> Runner
     GitLab --> Prometheus
 ```
@@ -165,7 +167,7 @@ Rotate it after the first login. Git repository SSH is exposed on port `2222`, s
 
 ### Grafana
 
-Open the `grafana_url` output. The username is `admin`.
+Open the private SSH tunnel returned by `grafana_ssh_tunnel_command`, then browse to the local `grafana_url` output. The username is `admin`.
 
 ```bash
 ssh azureadmin@MONITORING_PUBLIC_IP \
@@ -180,6 +182,10 @@ Keep both administrative interfaces private and use SSH tunnels:
 ssh -L 9090:127.0.0.1:9090 azureadmin@MONITORING_PUBLIC_IP
 ssh -L 9093:127.0.0.1:9093 azureadmin@MONITORING_PUBLIC_IP
 ```
+
+### Optional public CloudSphere status page
+
+The opt-in Caddy profile publishes only the read-only CloudSphere status page at `https://www.cloudsphere-sda.online/`. The operator console and all monitoring administration remain private. Follow [docs/PUBLIC_ACCESS.md](docs/PUBLIC_ACCESS.md) for the Namecheap record, Azure ingress gate, activation, verification, and rollback procedure.
 
 ## Create the internal project and register Runner
 
@@ -213,7 +219,8 @@ The root `.gitlab-ci.yml` provides:
 - ShellCheck for all automation scripts
 - Python syntax and unit tests
 - Grafana dashboard JSON validation
-- Both Docker Compose model validations
+- Default, public-profile, and GitLab Docker Compose model validation
+- Caddy configuration validation without starting HTTPS or requesting a certificate
 - GitLab secret detection
 - A protected manual deployment job for the monitoring stack
 
@@ -316,6 +323,7 @@ docs/                   Architecture, GitLab, security, tests, operations, and r
 - [Test and acceptance plan](docs/TEST_PLAN.md)
 - [Guided implementation presentation](docs/PRESENTATION_GUIDE.md)
 - [CloudSphere browser controls and deployment](docs/CLOUDSPHERE_CONTROL.md)
+- [Public DNS, HTTPS, security boundary, and rollback](docs/PUBLIC_ACCESS.md)
 - [Build validation summary](docs/VALIDATION_SUMMARY.md)
 
 ## Production evolution

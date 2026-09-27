@@ -10,7 +10,7 @@ This plan verifies Azure provisioning, self-managed GitLab, repository collabora
 - Sufficient regional vCPU quota for both selected VM SKUs.
 - Terraform 1.8+, Azure CLI, Bash, OpenSSH, and `tar`.
 - Trusted administrator public IPv4 `/32` and an SSH public key.
-- A browser allowed by the GitLab and Grafana NSGs.
+- A browser allowed by the restricted GitLab NSG plus the documented SSH tunnel to monitoring-VM loopback for Grafana.
 - A GitLab runner authentication token for Runner tests.
 
 ## Static checks

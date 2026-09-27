@@ -48,9 +48,29 @@ if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; 
     "${GITLAB_DIR}/scripts/init-secrets.sh" >/dev/null
   fi
   run_check "Monitoring Compose model" docker compose --project-directory "${STACK_DIR}" --env-file "${STACK_DIR}/.env.example" -f "${STACK_DIR}/compose.yaml" config --quiet
+  run_check "Monitoring Compose public profile" docker compose --project-directory "${STACK_DIR}" --profile public --env-file "${STACK_DIR}/.env.example" -f "${STACK_DIR}/compose.yaml" config --quiet
   run_check "GitLab Compose model" docker compose --project-directory "${GITLAB_DIR}" --env-file "${GITLAB_DIR}/.env.example" -f "${GITLAB_DIR}/compose.yaml" config --quiet
 else
   printf '[skip] Docker Compose is not installed.\n'
+fi
+
+if command -v caddy >/dev/null 2>&1; then
+  run_check "Caddy configuration" env \
+    PUBLIC_DOMAIN=www.cloudsphere-sda.online \
+    PUBLIC_APEX_DOMAIN=cloudsphere-sda.online \
+    caddy validate --config "${STACK_DIR}/caddy/Caddyfile" --adapter caddyfile
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  caddy_image="$(sed -n 's/^CADDY_IMAGE=//p' "${STACK_DIR}/.env.example" | tail -n 1)"
+  caddy_image="${caddy_image:-caddy:2.11.4-alpine}"
+  run_check "Caddy configuration" docker run --rm \
+    --entrypoint caddy \
+    --env PUBLIC_DOMAIN=www.cloudsphere-sda.online \
+    --env PUBLIC_APEX_DOMAIN=cloudsphere-sda.online \
+    --mount "type=bind,source=${STACK_DIR}/caddy/Caddyfile,target=/etc/caddy/Caddyfile,readonly" \
+    "${caddy_image}" \
+    validate --config /etc/caddy/Caddyfile --adapter caddyfile
+else
+  printf '[skip] Caddy validation requires Caddy or a running Docker engine.\n'
 fi
 
 if [[ "${failures}" -ne 0 ]]; then

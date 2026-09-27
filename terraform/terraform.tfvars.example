@@ -15,6 +15,11 @@ gitlab_vm_size      = "Standard_D2ads_v7"
 gitlab_os_disk_size_gb = 128
 expose_prometheus   = false
 
+# Keep disabled until the public reverse proxy is deployed and the Namecheap
+# DNS records point to the monitoring VM's static public IP address.
+public_frontend_enabled = false
+public_frontend_domain  = "www.cloudsphere-sda.online"
+
 # Leave empty to restrict GitLab to admin_source_cidr, or add trusted team CIDRs.
 gitlab_access_cidrs = []
 

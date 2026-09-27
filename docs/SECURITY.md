@@ -19,6 +19,7 @@
 | GitLab metrics | Monitoring allowlist permits only loopback and the private Azure VNet. Bundled Prometheus is disabled, and the separate GitLab host exporter has no public NSG rule. |
 | Grafana | Anonymous access and public signup are disabled; the admin password is generated as a Compose secret. |
 | Monitoring interfaces | Prometheus, Alertmanager, and the CloudSphere application bind to host loopback. Exporters remain on the Docker network. |
+| Public status page | The opt-in Caddy profile terminates trusted HTTPS and allowlists only read-only CloudSphere routes. A dedicated `PUBLIC_ONLY` process enforces the same boundary on an isolated edge network; control, metrics, alert, and administrative paths are denied. |
 | CI Runner | Runner is deployed away from the GitLab application. Registration tokens and deployment keys are not stored in the repository. |
 | CI deployment | Deployment is manual, limited to the default branch, and uses protected CI/CD variables plus a pre-verified SSH known-hosts entry. Terraform apply/destroy are not automated. |
 | Secret scanning | GitLab's maintained secret-detection template is included in the pipeline. |
@@ -28,7 +29,7 @@
 
 ## Important residual risks
 
-1. **Training HTTP endpoints:** GitLab and Grafana use restricted HTTP for the presentation environment. Add DNS, trusted TLS certificates, secure redirects, and secure cookies before production.
+1. **Restricted training HTTP endpoints:** GitLab and Grafana still use restricted HTTP for the presentation environment. The optional public CloudSphere page has automatic HTTPS, but it does not add TLS to those private services.
 2. **Constrained GitLab sizing:** The example GitLab VM is smaller than the current normal single-node baseline. Slow response, initialization delay, or resource exhaustion is possible.
 3. **Single-node services:** Each VM is a failure domain. There is no GitLab, Prometheus, Grafana, or Alertmanager high availability.
 4. **Docker socket:** Runner requires access to the Docker socket to create Docker executor jobs. Compromise of a CI job or Runner can lead to host-level control. Use dedicated ephemeral Runner hosts and tightly governed projects in production.
@@ -61,6 +62,7 @@ The `.gitignore` covers expected local secret and state files. GitLab secret det
 
 ## Pre-production gate
 
+- Public CloudSphere access passes every DNS, HTTPS, blocked-route, and closed-administration-port check in `PUBLIC_ACCESS.md`.
 - DNS and TLS configured for GitLab and Grafana.
 - GitLab sizing validated against current requirements and measured workload.
 - Administrator and team CIDRs reviewed.

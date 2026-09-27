@@ -3,6 +3,7 @@
 
 import json
 from http.server import ThreadingHTTPServer
+import os
 import threading
 import unittest
 from unittest import mock
@@ -103,6 +104,40 @@ class CloudSphereApplicationTests(unittest.TestCase):
         ):
             self.assertIn(expected, page)
 
+    def test_public_page_is_read_only_and_excludes_private_operator_features(self):
+        page = app.PUBLIC_HTML.decode("utf-8")
+
+        self.assertIn("CloudSphere | Platform Status", page)
+        self.assertIn("/assets/cloudsphere-avatar.png", page)
+        self.assertIn("/api/public/status", page)
+        self.assertNotIn("<button", page.lower())
+        for forbidden in (
+            "/simulate/",
+            "/api/state",
+            "grafana",
+            "prometheus",
+            "alertmanager",
+            "create order",
+            "generate 3 orders",
+            "trigger alert",
+            "reset all metrics",
+            "restock",
+            "cpu",
+            "infrastructure pulse",
+        ):
+            self.assertNotIn(forbidden, page.lower())
+
+    def test_public_status_snapshot_exposes_only_minimal_health_data(self):
+        payload = app.public_status_snapshot()
+
+        self.assertEqual(
+            set(payload),
+            {"service", "status", "uptime_seconds", "checked_at"},
+        )
+        self.assertEqual(payload["service"], "CloudSphere")
+        self.assertEqual(payload["status"], "operational")
+        self.assertGreaterEqual(payload["uptime_seconds"], 0)
+
     def test_controlled_cpu_load_is_single_run_and_stoppable(self):
         process = FakeProcess()
         with (
@@ -155,6 +190,133 @@ class CloudSphereApplicationHTTPTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(response.headers.get_content_type(), "text/html")
             self.assertIn("CloudSphere", body)
+
+    def test_public_route_is_read_only_and_does_not_change_business_state(self):
+        before = dict(app.STATE)
+
+        with urllib.request.urlopen(f"{self.base_url}/public", timeout=2) as response:
+            body = response.read().decode("utf-8")
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers.get_content_type(), "text/html")
+            self.assertIn("CloudSphere | Platform Status", body)
+
+        self.assertEqual(app.STATE, before)
+
+    def test_public_status_endpoint_returns_minimal_non_sensitive_json(self):
+        before = dict(app.STATE)
+
+        with urllib.request.urlopen(f"{self.base_url}/api/public/status", timeout=2) as response:
+            payload = json.load(response)
+            self.assertEqual(response.status, 200)
+            self.assertEqual(
+                set(payload),
+                {"service", "status", "uptime_seconds", "checked_at"},
+            )
+            self.assertEqual(payload["status"], "operational")
+
+        self.assertEqual(app.STATE, before)
+
+    def test_public_only_mode_allows_public_get_and_head_routes(self):
+        allowed = (
+            "/public",
+            "/public/",
+            "/api/public/status",
+            "/assets/cloudsphere-avatar.png",
+            "/health",
+        )
+
+        with mock.patch.dict(os.environ, {"PUBLIC_ONLY": "true"}):
+            for path in allowed:
+                with self.subTest(method="GET", path=path):
+                    with urllib.request.urlopen(f"{self.base_url}{path}", timeout=2) as response:
+                        self.assertEqual(response.status, 200)
+
+                with self.subTest(method="HEAD", path=path):
+                    request = urllib.request.Request(f"{self.base_url}{path}", method="HEAD")
+                    with urllib.request.urlopen(request, timeout=2) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertEqual(response.read(), b"")
+
+    def test_public_only_status_does_not_parse_untrusted_query_parameters(self):
+        with (
+            mock.patch.dict(os.environ, {"PUBLIC_ONLY": "true"}),
+            mock.patch.object(app, "parse_qs", side_effect=AssertionError("query parsed")),
+        ):
+            with urllib.request.urlopen(
+                f"{self.base_url}/api/public/status?ignored=1",
+                timeout=2,
+            ) as response:
+                self.assertEqual(response.status, 200)
+
+    def test_public_only_mode_blocks_every_private_get_without_changing_state(self):
+        private_gets = (
+            "/",
+            "/api/state",
+            "/metrics",
+            "/simulate/order?amount=125&quantity=2",
+            "/simulate/restock?quantity=50",
+            "/simulate/error",
+            "/alerts",
+        )
+        before = dict(app.STATE)
+
+        with mock.patch.dict(os.environ, {"PUBLIC_ONLY": "true"}):
+            for path in private_gets:
+                with self.subTest(path=path):
+                    with self.assertRaises(urllib.error.HTTPError) as raised:
+                        urllib.request.urlopen(f"{self.base_url}{path}", timeout=2)
+                    self.assertEqual(raised.exception.code, 404)
+
+        self.assertEqual(app.STATE, before)
+
+    def test_public_only_mode_blocks_every_post_without_changing_state(self):
+        private_posts = (
+            ("/simulate/reset", None, {}),
+            ("/simulate/load/start", None, {"X-CloudSphere-Control": "1"}),
+            ("/simulate/load/stop", None, {"X-CloudSphere-Control": "1"}),
+            ("/alerts", b'{"alerts":[{"status":"firing"}]}', {"Content-Type": "application/json"}),
+            ("/public", None, {}),
+        )
+        before = dict(app.STATE)
+
+        with mock.patch.dict(os.environ, {"PUBLIC_ONLY": "true"}):
+            for path, body, headers in private_posts:
+                with self.subTest(path=path):
+                    request = urllib.request.Request(
+                        f"{self.base_url}{path}",
+                        data=body,
+                        headers=headers,
+                        method="POST",
+                    )
+                    with self.assertRaises(urllib.error.HTTPError) as raised:
+                        urllib.request.urlopen(request, timeout=2)
+                    self.assertEqual(raised.exception.code, 404)
+
+        self.assertEqual(app.STATE, before)
+
+    def test_public_only_mode_blocks_head_for_private_route(self):
+        before = dict(app.STATE)
+        request = urllib.request.Request(f"{self.base_url}/metrics", method="HEAD")
+
+        with mock.patch.dict(os.environ, {"PUBLIC_ONLY": "true"}):
+            with self.assertRaises(urllib.error.HTTPError) as raised:
+                urllib.request.urlopen(request, timeout=2)
+
+        self.assertEqual(raised.exception.code, 404)
+        self.assertEqual(app.STATE, before)
+
+    def test_default_mode_keeps_private_operator_endpoint_behavior(self):
+        with mock.patch.dict(os.environ, {"PUBLIC_ONLY": ""}):
+            with urllib.request.urlopen(
+                f"{self.base_url}/simulate/order?amount=125&quantity=2",
+                timeout=2,
+            ) as response:
+                payload = json.load(response)
+
+        self.assertEqual(response.status, 200)
+        self.assertTrue(payload["accepted"])
+        self.assertEqual(app.STATE["orders_total"], 1)
+        self.assertEqual(app.STATE["inventory_level"], 98)
 
     def test_state_api_returns_json(self):
         with urllib.request.urlopen(f"{self.base_url}/api/state", timeout=2) as response:

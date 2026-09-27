@@ -44,7 +44,7 @@ variable "ssh_public_key_path" {
 }
 
 variable "admin_source_cidr" {
-  description = "Trusted public IPv4 CIDR allowed to reach SSH and Grafana, normally YOUR_PUBLIC_IP/32."
+  description = "Trusted public IPv4 CIDR allowed to reach administrative SSH and any explicitly enabled private service, normally YOUR_PUBLIC_IP/32."
   type        = string
 
   validation {
@@ -104,6 +104,26 @@ variable "expose_prometheus" {
   description = "Create a public NSG rule for Prometheus. Keep false and use an SSH tunnel unless there is a specific need."
   type        = bool
   default     = false
+}
+
+variable "public_frontend_enabled" {
+  description = "Allow public HTTP and HTTPS traffic to the monitoring VM for the CloudSphere frontend. Keep false until the reverse proxy and DNS are ready."
+  type        = bool
+  default     = false
+}
+
+variable "public_frontend_domain" {
+  description = "Public DNS hostname for the CloudSphere frontend. DNS remains managed outside Terraform."
+  type        = string
+  default     = "www.cloudsphere-sda.online"
+
+  validation {
+    condition = (
+      length(var.public_frontend_domain) <= 253 &&
+      can(regex("^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$", lower(var.public_frontend_domain)))
+    )
+    error_message = "public_frontend_domain must be a valid DNS hostname without a scheme, port, path, or trailing dot."
+  }
 }
 
 variable "auto_shutdown_enabled" {
