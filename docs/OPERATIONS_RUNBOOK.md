@@ -32,6 +32,8 @@ docker compose --env-file .env logs --tail=200 grafana
 docker compose --env-file .env logs --tail=200 gitlab-runner
 ```
 
+When the optional public status page is enabled, use the DNS, HTTPS, route-isolation, troubleshooting, and rollback checks in [PUBLIC_ACCESS.md](PUBLIC_ACCESS.md). Its public availability also depends on the monitoring VM being powered on.
+
 ## 3. Stop and reopen
 
 Use `stop` to preserve containers and all persistent data:

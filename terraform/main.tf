@@ -81,20 +81,6 @@ resource "azurerm_network_security_rule" "ssh" {
   network_security_group_name = azurerm_network_security_group.monitoring.name
 }
 
-resource "azurerm_network_security_rule" "grafana" {
-  name                        = "Allow-Grafana-From-Admin"
-  priority                    = 110
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_range      = "3000"
-  source_address_prefix       = var.admin_source_cidr
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.monitoring.name
-  network_security_group_name = azurerm_network_security_group.monitoring.name
-}
-
 resource "azurerm_network_security_rule" "prometheus" {
   count = var.expose_prometheus ? 1 : 0
 
@@ -106,6 +92,22 @@ resource "azurerm_network_security_rule" "prometheus" {
   source_port_range           = "*"
   destination_port_range      = "9090"
   source_address_prefix       = var.admin_source_cidr
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.monitoring.name
+  network_security_group_name = azurerm_network_security_group.monitoring.name
+}
+
+resource "azurerm_network_security_rule" "public_frontend" {
+  count = var.public_frontend_enabled ? 1 : 0
+
+  name                        = "Allow-CloudSphere-Web-From-Internet"
+  priority                    = 130
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_ranges     = ["80", "443"]
+  source_address_prefix       = "Internet"
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.monitoring.name
   network_security_group_name = azurerm_network_security_group.monitoring.name

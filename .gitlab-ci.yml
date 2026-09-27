@@ -55,7 +55,20 @@ compose_validate:
     - printf 'gitlab-ci-placeholder-password\n' > gitlab/secrets/gitlab_root_password.txt
   script:
     - docker compose --env-file stack/.env.example -f stack/compose.yaml config --quiet
+    - docker compose --profile public --env-file stack/.env.example -f stack/compose.yaml config --quiet
     - docker compose --env-file gitlab/.env.example -f gitlab/compose.yaml config --quiet
+
+caddy_validate:
+  stage: validate
+  image:
+    name: caddy:2.11.4-alpine
+    entrypoint: [""]
+  variables:
+    PUBLIC_DOMAIN: "www.cloudsphere-sda.online"
+    PUBLIC_APEX_DOMAIN: "cloudsphere-sda.online"
+  script:
+    # Validation loads the config but never starts the HTTPS server or requests a certificate.
+    - caddy validate --config stack/caddy/Caddyfile --adapter caddyfile
 
 unit_tests:
   stage: test

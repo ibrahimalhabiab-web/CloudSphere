@@ -64,7 +64,7 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
-      - 0.0.0.0:3000:3000
+      - 127.0.0.1:3000:3000
     depends_on:
       - prometheus
     networks:
@@ -158,6 +158,78 @@ services:
       retries: 5
       start_period: 10s
 
+  cloudsphere-public:
+    build:
+      context: ./cloudsphere-app
+    container_name: monitoring-cloudsphere-public
+    profiles:
+      - public
+    environment:
+      PUBLIC_ONLY: "true"
+    cpus: "0.25"
+    mem_limit: 96m
+    pids_limit: 32
+    expose:
+      - "8000"
+    networks:
+      - public-edge
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  caddy:
+    image: ${CADDY_IMAGE:-caddy:2.11.4-alpine}
+    container_name: monitoring-caddy
+    profiles:
+      - public
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-www.cloudsphere-sda.online}
+      PUBLIC_APEX_DOMAIN: ${PUBLIC_APEX_DOMAIN:-cloudsphere-sda.online}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      cloudsphere-public:
+        condition: service_healthy
+    networks:
+      - public-edge
+    restart: unless-stopped
+    read_only: true
+    cpus: "0.25"
+    mem_limit: 128m
+    pids_limit: 64
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   gitlab-runner:
     image: ${GITLAB_RUNNER_IMAGE:-gitlab/gitlab-runner:v19.3.0}
     container_name: monitoring-gitlab-runner
@@ -181,6 +253,9 @@ networks:
   monitoring:
     name: monitoring_network
     driver: bridge
+  public-edge:
+    name: cloudsphere_public_edge
+    driver: bridge
 
 volumes:
   prometheus_data:
@@ -191,6 +266,10 @@ volumes:
     name: monitoring_grafana_data
   gitlab_runner_config:
     name: monitoring_gitlab_runner_config
+  caddy_data:
+    name: monitoring_caddy_data
+  caddy_config:
+    name: monitoring_caddy_config
 
 secrets:
   grafana_admin_password:

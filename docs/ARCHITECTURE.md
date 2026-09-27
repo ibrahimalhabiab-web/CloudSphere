@@ -10,7 +10,7 @@ The platform joins internal software delivery and operational observability in o
 |---|---|---|
 | Azure foundation | One resource group, one VNet, two subnets, two NSGs, two static public IPs | Isolation, restricted ingress, routing, identity, disks, and lifecycle |
 | GitLab VM | Ubuntu 24.04, Docker Compose, GitLab CE, Node Exporter | Repositories, branches, merge requests, users, CI orchestration, artifacts, and host telemetry |
-| Monitoring VM | Ubuntu 24.04, Docker Compose | Runner, Prometheus, Grafana, Alertmanager, exporters, and the CloudSphere application |
+| Monitoring VM | Ubuntu 24.04, Docker Compose | Runner, Prometheus, Grafana, Alertmanager, exporters, the CloudSphere application, and an optional public Caddy proxy |
 | Infrastructure as code | Terraform and cloud-init | Repeatable Azure provisioning and host bootstrap |
 | Operations automation | Bash | Deployment, secrets, health checks, Runner registration, backup, restore, and teardown |
 
@@ -58,8 +58,9 @@ flowchart TB
 | GitLab host SSH, TCP 22 | GitLab public IP | `admin_source_cidr` only |
 | GitLab HTTP/HTTPS, TCP 80/443 | GitLab public IP | `gitlab_access_cidrs`, falling back to the administrator CIDR |
 | Git repository SSH, TCP 2222 | GitLab public IP | Same trusted GitLab CIDRs |
-| Grafana, TCP 3000 | Monitoring public IP | Administrator CIDR only |
+| Grafana, TCP 3000 | Monitoring VM loopback | SSH tunnel only |
 | Monitoring host SSH, TCP 22 | Monitoring public IP | Administrator CIDR only |
+| Public CloudSphere HTTPS, TCP 80/443 | Monitoring public IP | Optional Internet rule; Caddy exposes only the read-only allowlist |
 | Prometheus, TCP 9090 | Monitoring VM loopback | SSH tunnel only by default |
 | Alertmanager, TCP 9093 | Monitoring VM loopback | SSH tunnel only |
 | CloudSphere service, TCP 8000 | Monitoring VM loopback | Local presentation traffic only |
@@ -112,6 +113,7 @@ Named volumes preserve Prometheus, Grafana, Alertmanager, and GitLab Runner conf
 - Initial passwords are generated on their target hosts and ignored by Git.
 - GitLab metrics are allowed only from loopback and the private VNet.
 - Prometheus and Alertmanager stay loopback-only.
+- The optional public profile places Caddy and a dedicated `PUBLIC_ONLY` application process on an isolated edge network. It exposes only the read-only page, branded asset, health, and sanitized status API; operational and monitoring routes remain private on a separate network.
 - Runner registration and deployment keys are never stored in the repository.
 - The CI deployment is manual and restricted to the default branch.
 - Restore and destroy scripts require explicit confirmation.
